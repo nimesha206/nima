@@ -4113,6 +4113,23 @@ _ස්තූතියි!_ 🌸`).then(() => {
 ├ *වෙලාව* : ${jam} WIB
 ╰──────❍
 ╭──❍「 *🤖 බොට් | BOT COMMANDS 🤖* 」❍
+│${setv} ${prefix}alive (බොට් ජීවතුන් අතර ද?)
+│${setv} ${prefix}bot (බොට් තත්ත්වය)
+│${setv} ${prefix}ping (ප්‍රතිචාර කාලය)
+│${setv} ${prefix}runtime (ක්‍රියාත්මක වන කාලය)
+│${setv} ${prefix}uptime (ක්‍රියාත්මක වන කාලය)
+│${setv} ${prefix}speed (වේගය පරීක්ෂාව)
+│${setv} ${prefix}info (බොට් තොරතුරු)
+│${setv} ${prefix}owner (හිමිකරු තොරතුරු)
+│${setv} ${prefix}vv (view once පණිවිඩ බැලීම)
+│${setv} ${prefix}ok (view once පණිවිඩ බැලීම)
+│${setv} ${prefix}jid (JID / අංකය බැලීම)
+│${setv} ${prefix}url (URL encode කිරීම)
+│${setv} ${prefix}groupinfo (සමූහ විස්තර)
+│${setv} ${prefix}staff (සමූහ පාලකයන්)
+│${setv} ${prefix}admins (සමූහ පාලකයන්)
+│${setv} ${prefix}github (GitHub කේත ගබඩාව)
+│${setv} ${prefix}repo (GitHub කේත ගබඩාව)
 │${setv} ${prefix}profile (ගිණුම් විස්තර)
 │${setv} ${prefix}claim (ත්‍යාග ලබා ගැනීම)
 │${setv} ${prefix}buy (භාණ්ඩ මිලදී ගැනීම)
@@ -4472,6 +4489,13 @@ _ස්තූතියි!_ 🌸`).then(() => {
 │${setv} ${prefix}cuaca (කාලගුණය - නගරය)
 │${setv} ${prefix}tenor (Tenor GIF සෙවීම්)
 │${setv} ${prefix}urban (Urban Dictionary අර්ථ)
+│${setv} ${prefix}weather (කාලගුණය - නගරය)
+│${setv} ${prefix}news (අලුත්ම ප්‍රවෘත්ති)
+│${setv} ${prefix}lyrics (ගීත පද)
+│${setv} ${prefix}define (වචන අර්ථය)
+│${setv} ${prefix}cinfo (රට ගැන තොරතුරු)
+│${setv} ${prefix}ss (වෙබ් Screenshots)
+│${setv} ${prefix}screenshot (වෙබ් Screenshots)
 ╰──────❍`)
 			}
 			break
@@ -4491,6 +4515,7 @@ _ස්තූතියි!_ 🌸`).then(() => {
 │${setv} ${prefix}facebook (Facebook වීඩියෝ)
 │${setv} ${prefix}spotifydl (Spotify ගීත)
 │${setv} ${prefix}mediafire (Mediafire ගොනු)
+│${setv} ${prefix}apk (Android APK බාගත කිරීම)
 ╰──────❍`)
 			}
 			break
@@ -4553,6 +4578,13 @@ _ස්තූතියි!_ 🌸`).then(() => {
 │${setv} ${prefix}earrape (ඉයර්රේප් ඉෆෙක්ට්)
 │${setv} ${prefix}nightcore (නයිට්කෝර් ඉෆෙක්ට්)
 │${setv} ${prefix}getexif (ස්ටිකර් විස්තර බැලීම)
+│${setv} ${prefix}blur (රූපය blur කිරීම)
+│${setv} ${prefix}removebg (background ඉවත් කිරීම)
+│${setv} ${prefix}rmbg (background ඉවත් කිරීම)
+│${setv} ${prefix}simage (sticker → රූපය)
+│${setv} ${prefix}toimg (sticker → රූපය)
+│${setv} ${prefix}tts (text → හඬ)
+│${setv} ${prefix}trt (පිළිතුරු පරිවර්තනය)
 ╰──────❍`)
 			}
 			break
@@ -4570,6 +4602,12 @@ _ස්තූතියි!_ 🌸`).then(() => {
 │${setv} ${prefix}groupai on (Group AI on - admin)
 │${setv} ${prefix}groupai off (Group AI off - admin)
 │${setv} ${prefix}clearai (AI history මකන්න)
+├──── *නව AI Commands* ────
+│${setv} ${prefix}gpt (ChatGPT - ප්‍රශ්න ඇසීම)
+│${setv} ${prefix}llama3 (LLaMA3 AI - ප්‍රශ්න ඇසීම)
+│${setv} ${prefix}imagine (AI රූප සෑදීම)
+│${setv} ${prefix}flux (AI Flux රූප සෑදීම)
+│${setv} ${prefix}sora (AI Sora රූප සෑදීම)
 ╰──────❍`)
 			}
 			break
@@ -4593,6 +4631,18 @@ _ස්තූතියි!_ 🌸`).then(() => {
 ╭──❍「 *ඇනිමේ (ANIME)* 」❍
 │${setv} ${prefix}waifu (ඇනිමේ රූප)
 │${setv} ${prefix}neko (නෙකෝ රූප)
+│${setv} ${prefix}loli (ලොලි ඇනිමේ රූප)
+│${setv} ${prefix}hug (වැළඳ ගැනීම GIF)
+│${setv} ${prefix}kiss (සිප ගැනීම GIF)
+│${setv} ${prefix}pat (හිස තබා ගැනීම GIF)
+│${setv} ${prefix}poke (ඇනීම GIF)
+│${setv} ${prefix}cry (හැඬීම GIF)
+│${setv} ${prefix}wink (ඇහිල්ල GIF)
+│${setv} ${prefix}nom (කෑම GIF)
+│${setv} ${prefix}facepalm (කළකිරීම GIF)
+│${setv} ${prefix}punch (ගැහීම GIF)
+│${setv} ${prefix}slap (ෂාපිල්ල GIF)
+│${setv} ${prefix}dance (නැටීම GIF)
 ╰──────❍`)
 			}
 			break
@@ -4648,6 +4698,56 @@ _ස්තූතියි!_ 🌸`).then(() => {
 │${setv} ${prefix}huluh (අකුරු වෙනස් කිරීම)
 │${setv} ${prefix}heleh (අකුරු වෙනස් කිරීම)
 │${setv} ${prefix}holoh (අකුරු වෙනස් කිරීම)
+├──── *නව Fun Commands* ────
+│${setv} ${prefix}joke (ජෝකු)
+│${setv} ${prefix}quote (ජීවිත කතාව)
+│${setv} ${prefix}fact (රසවත් කරුණු)
+│${setv} ${prefix}8ball (ප්‍රශ්නයට අනාවැකිය)
+│${setv} ${prefix}compliment (ප්‍රශංසා කිරීම)
+│${setv} ${prefix}insult (හාස්‍යෙට බැනීම)
+│${setv} ${prefix}flirt (ආදරයෙන් කතා කිරීම)
+│${setv} ${prefix}hack (WhatsApp Hack 💀)
+│${setv} ${prefix}shayari (ෂායාරි)
+│${setv} ${prefix}goodnight (සුභ රාත්‍රිය)
+│${setv} ${prefix}roseday (රෝස දිනය)
+│${setv} ${prefix}ship (යුගල ගැළපීම)
+│${setv} ${prefix}simp (Simp Meter)
+│${setv} ${prefix}character (පෞරුෂ විශ්ලේෂණය)
+│${setv} ${prefix}wasted (Wasted ඉෆෙක්ට්)
+│${setv} ${prefix}triggered (Triggered ඉෆෙක්ට්)
+│${setv} ${prefix}stupid (හාස්‍ය පණිවිඩය)
+│${setv} ${prefix}oogway (Oogway quote)
+│${setv} ${prefix}tweet (Tweet රූපය)
+│${setv} ${prefix}ytcomment (YouTube comment රූපය)
+│${setv} ${prefix}jail (Jail ඉෆෙක්ට්)
+│${setv} ${prefix}namecard (නම් කාඩ්)
+│${setv} ${prefix}heart (Heart ඉෆෙක්ට්)
+│${setv} ${prefix}circle (Circle ඉෆෙක්ට්)
+│${setv} ${prefix}lgbt (LGBT ඉෆෙක්ට්)
+╰──────❍`)
+			}
+			break
+			case 'textmakermenu': {
+				m.reply(`
+╭──❍「 *අකුරු කලාව (TEXT MAKER)* 」❍
+│${setv} ${prefix}metallic (ලෝහ ස්ටයිල්)
+│${setv} ${prefix}ice (අයිස් ස්ටයිල්)
+│${setv} ${prefix}snow (හිම ස්ටයිල්)
+│${setv} ${prefix}impressive (ආකර්ශනීය ස්ටයිල්)
+│${setv} ${prefix}matrix (Matrix ස්ටයිල්)
+│${setv} ${prefix}light (ආලෝකය ස්ටයිල්)
+│${setv} ${prefix}neon (Neon ස්ටයිල්)
+│${setv} ${prefix}devil (යක්ෂ ස්ටයිල්)
+│${setv} ${prefix}purple (දම් ස්ටයිල්)
+│${setv} ${prefix}thunder (ගිගුරුම් ස්ටයිල්)
+│${setv} ${prefix}leaves (කොළ ස්ටයිල්)
+│${setv} ${prefix}1917 (1917 ස්ටයිල්)
+│${setv} ${prefix}arena (Arena ස්ටයිල්)
+│${setv} ${prefix}hacker (හැකර් ස්ටයිල්)
+│${setv} ${prefix}sand (වැලි ස්ටයිල්)
+│${setv} ${prefix}blackpink (BlackPink ස්ටයිල්)
+│${setv} ${prefix}glitch (Glitch ස්ටයිල්)
+│${setv} ${prefix}fire (ගිනි ස්ටයිල්)
 ╰──────❍`)
 			}
 			break
