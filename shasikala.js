@@ -582,11 +582,23 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
                     // button msg delete කරනවා — media msg replace ලෙස එනවා
                     try { await nimesha.sendMessage(m.chat, { delete: statusMsg.key }); } catch(e) {}
                     const mediaCaption = `🎵 *${pending.displayTitle}*\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}`;
+                    const audioContextInfo = {
+                        externalAdReply: {
+                            title: pending.displayTitle,
+                            body: `🎵 Miss Shasikala Bot | ${botFooter.replace(/[*_>]/g, '').trim()}`,
+                            renderLargerThumbnail: false,
+                            showAdAttribution: true
+                        }
+                    };
                     if (choice === '1') {
-                        await nimesha.sendMessage(m.chat, { audio: audioBuffer, mimetype: 'audio/mpeg', ptt: false, fileName: `${pending.displayTitle.substring(0, 40)}.mp3`, contextInfo: { externalAdReply: { title: pending.displayTitle, body: '🎵 Miss Shasikala Bot', renderLargerThumbnail: false } } }, { quoted: m });
+                        // Audio mp3 — contextInfo footer සමඟ
+                        await nimesha.sendMessage(m.chat, { audio: audioBuffer, mimetype: 'audio/mpeg', ptt: false, fileName: `${pending.displayTitle.substring(0, 40)}.mp3`, contextInfo: audioContextInfo }, { quoted: m });
                     } else if (choice === '2') {
-                        await nimesha.sendMessage(m.chat, { audio: audioBuffer, mimetype: 'audio/ogg; codecs=opus', ptt: true }, { quoted: m });
+                        // Voice note — WhatsApp limitation: caption support නැහා
+                        // Workaround: forward style contextInfo — footer ලෙස title පෙනෙනවා
+                        await nimesha.sendMessage(m.chat, { audio: audioBuffer, mimetype: 'audio/ogg; codecs=opus', ptt: true, contextInfo: audioContextInfo }, { quoted: m });
                     } else if (choice === '3') {
+                        // Document — caption support ඇත
                         await nimesha.sendMessage(m.chat, { document: audioBuffer, mimetype: 'audio/mpeg', fileName: `${pending.displayTitle.substring(0, 40)}.mp3`, caption: mediaCaption }, { quoted: m });
                     }
                     try { fs.unlinkSync(downloadResult.filePath); } catch (e) {}
