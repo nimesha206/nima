@@ -1,0 +1,196 @@
+name: 🌸 Miss Shasikala Bot Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+    inputs:
+      deploy_target:
+        description: 'Deploy Target'
+        required: true
+        default: 'vps'
+        type: choice
+        options:
+          - vps
+          - railway
+          - docker
+
+# ══════════════════════════════════════════════
+#   GitHub Secrets හි මේවා set කරන්න:
+#
+#   VPS deploy සඳහා:
+#     VPS_HOST       → ඔබේ server IP (eg: 123.456.789.0)
+#     VPS_USER       → SSH username (eg: root)
+#     VPS_SSH_KEY    → Private SSH key (id_rsa content)
+#     VPS_PORT       → SSH port (default: 22)
+#     BOT_PATH       → Bot folder path (eg: /home/user/nimabw)
+#
+#   Railway deploy සඳහා:
+#     RAILWAY_TOKEN  → Railway API token
+#
+#   Docker Hub සඳහා:
+#     DOCKER_USERNAME → Docker Hub username
+#     DOCKER_PASSWORD → Docker Hub password / token
+#
+# ══════════════════════════════════════════════
+
+jobs:
+
+  # ── 1. CODE CHECK ─────────────────────────────
+  check:
+    name: 🔍 Code Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 📦 Install Dependencies
+        run: npm install
+
+      - name: ✅ Syntax Check
+        run: node --check start.js index.js nima.js
+
+      - name: 📋 Check Complete
+        run: echo "✅ Code check passed!"
+
+  # ── 2. VPS DEPLOY (SSH) ───────────────────────
+  deploy-vps:
+    name: 🚀 Deploy to VPS
+    runs-on: ubuntu-latest
+    needs: check
+    # VPS_HOST secret set කළොත් පමණයි run වේ
+    if: |
+      github.event_name == 'push' &&
+      vars.DEPLOY_TARGET == 'vps' ||
+      github.event.inputs.deploy_target == 'vps'
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🔑 Setup SSH Key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: 🌐 Add Host to Known Hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p ${{ secrets.VPS_PORT || 22 }} ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: 📂 Upload Files to VPS
+        run: |
+          rsync -avz --delete \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='nimadev' \
+            --exclude='database.json' \
+            --exclude='baileys_store.json' \
+            --exclude='database/temp' \
+            -e "ssh -p ${{ secrets.VPS_PORT || 22 }}" \
+            ./ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${{ secrets.BOT_PATH }}/
+
+      - name: 🔄 Restart Bot on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            cd ${{ secrets.BOT_PATH }}
+
+            echo "📦 Installing dependencies..."
+            npm install --production
+
+            echo "🔄 Restarting bot..."
+            # PM2 use කරනවා නම්
+            if command -v pm2 &> /dev/null; then
+              pm2 restart nima-bot 2>/dev/null || pm2 start start.js --name nima-bot
+              pm2 save
+              echo "✅ Bot restarted with PM2!"
+              pm2 status nima-bot
+            # Screen use කරනවා නම්
+            elif command -v screen &> /dev/null; then
+              screen -S nima-bot -X quit 2>/dev/null || true
+              screen -dmS nima-bot node start.js
+              echo "✅ Bot restarted with Screen!"
+            else
+              echo "⚠️ PM2 හෝ Screen install කරන්න!"
+              echo "PM2:    npm install -g pm2"
+              echo "Screen: apt install screen"
+              exit 1
+            fi
+
+      - name: 🎉 Deploy Success Notification
+        if: success()
+        run: |
+          echo "✅ Miss Shasikala Bot successfully deployed to VPS!"
+          echo "🕐 Time: $(date)"
+
+  # ── 3. RAILWAY DEPLOY ─────────────────────────
+  deploy-railway:
+    name: 🚂 Deploy to Railway
+    runs-on: ubuntu-latest
+    needs: check
+    if: |
+      vars.DEPLOY_TARGET == 'railway' ||
+      github.event.inputs.deploy_target == 'railway'
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🚂 Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: 🚀 Deploy to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway up --detach
+          echo "✅ Deployed to Railway!"
+
+  # ── 4. DOCKER BUILD & PUSH ────────────────────
+  deploy-docker:
+    name: 🐳 Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: check
+    if: |
+      vars.DEPLOY_TARGET == 'docker' ||
+      github.event.inputs.deploy_target == 'docker'
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐳 Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: 🏗️ Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔨 Build and Push Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/miss-shasikala:latest
+            ${{ secrets.DOCKER_USERNAME }}/miss-shasikala:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 🎉 Docker Push Success
+        if: success()
+        run: |
+          echo "✅ Docker image pushed!"
+          echo "📦 Image: ${{ secrets.DOCKER_USERNAME }}/miss-shasikala:latest"

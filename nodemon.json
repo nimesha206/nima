@@ -1,0 +1,3 @@
+{
+  "ignore": ["nimesha", "node_modules", "database", "logs"]
+}

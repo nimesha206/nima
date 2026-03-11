@@ -1,0 +1,107 @@
+name: 🌸 Miss Shasikala Bot Runner
+
+on:
+  # සෑම 6 පැයකට වරක් restart
+  schedule:
+    - cron: '0 */6 * * *'
+  # Manual run / first time
+  workflow_dispatch:
+  # Push කළාම restart
+  push:
+    branches:
+      - main
+      - master
+
+# ══════════════════════════════════════════════
+#   GitHub Secrets හි මේවා set කරන්න:
+#   (Settings → Secrets and variables → Actions)
+#
+#   GEMINI_API_KEY  → Gemini API key
+#   SESSION_DATA    → (පළමු run කළාට පස්සේ auto set වේ)
+#
+# ══════════════════════════════════════════════
+
+jobs:
+  run-bot:
+    name: 🤖 Run Miss Shasikala
+    runs-on: ubuntu-latest
+    timeout-minutes: 350  # ~5hr 50min (Actions max = 6hr)
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 🔧 Install System Dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg imagemagick webp python3-pip -qq
+          # yt-dlp latest version
+          sudo pip3 install -U yt-dlp
+          # bgutil PO Token plugin (bot check bypass)
+          sudo pip3 install -U bgutil-ytdlp-pot-provider
+          yt-dlp --version
+          # temp folder
+          mkdir -p database/temp
+
+      - name: 📦 Install Node Dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: 📂 Restore Session (nimadev folder)
+        uses: actions/cache@v4
+        with:
+          path: nimadev
+          key: session-nimadev-${{ github.run_id }}
+          restore-keys: |
+            session-nimadev-
+
+      - name: 📂 Restore Database
+        uses: actions/cache@v4
+        with:
+          path: |
+            database.json
+            baileys_store.json
+          key: database-${{ github.run_id }}
+          restore-keys: |
+            database-
+
+      - name: ⚙️ Setup Environment
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          # settings.js හි API key inject කරන්නේ නැතිව env use කරනවා නම් මෙහෙම
+          echo "✅ Environment ready"
+          ls -la nimadev/ 2>/dev/null && echo "✅ Session found!" || echo "⚠️ No session - QR scan needed"
+
+      - name: 🚀 Run Bot
+        timeout-minutes: 345
+        run: |
+          # Bot run + crash වුනොත් restart
+          while true; do
+            echo "🌸 Starting Miss Shasikala... $(date)"
+            node start.js || true
+            echo "🔄 Bot stopped. Restarting in 10s..."
+            sleep 10
+          done
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: 💾 Save Session After Run
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: nimadev
+          key: session-nimadev-${{ github.run_id }}
+
+      - name: 💾 Save Database After Run
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            database.json
+            baileys_store.json
+          key: database-${{ github.run_id }}
