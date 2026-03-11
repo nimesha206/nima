@@ -716,7 +716,7 @@ async function Solving(nimesha, store) {
 				}
 			}
 		}, {});
-		const hasil = await nimesha.relayMessage(msg.key.remoteJid, msg.message, {
+		await nimesha.relayMessage(msg.key.remoteJid, msg.message, {
 			messageId: msg.key.id,
 			additionalNodes: [{
 				tag: 'biz',
@@ -737,7 +737,7 @@ async function Solving(nimesha, store) {
 				}]
 			}, ...(ai ? [{ attrs: { biz_bot: '1' }, tag: 'bot' }] : [])]
 		})
-		return hasil
+		return msg  // key සහිතව return — edit/delete සඳහා
 	}
 	
 	nimesha.sendButtonMsg = async (jid, content = {}, options = {}) => {
