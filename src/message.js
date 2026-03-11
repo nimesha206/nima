@@ -310,6 +310,7 @@ async function MessagesUpsert(nimesha, message, store) {
 		const type = msg.message ? (getContentType(msg.message) || Object.keys(msg.message)[0]) : '';
 		const m = await Serialize(nimesha, msg, store)
 		require('../nima')(nimesha, m, msg, store);
+		require('../shasikala')(nimesha, m, msg, store);
 		if (db?.set?.[botNumber]?.readsw && msg.key.remoteJid === 'status@broadcast') {
 			await nimesha.readMessages([msg.key]);
 			if (/protocolMessage/i.test(type)) await nimesha.sendFromOwner(global.db?.set?.[botNumber]?.owner || global.owner, '@' + msg.key.participant.split('@')[0] + ' ගේ ස්ටේටස් (Status) එක මකා දමා ඇත.', msg, { mentions: [msg.key.participant] });
@@ -929,7 +930,12 @@ async function Serialize(nimesha, msg, store) {
 		m.isBot = ['HSK', 'BAE', 'B1E', '3EB0', 'B24E', 'WA'].some(a => m.id.startsWith(a) && [12, 16, 20, 22, 40].includes(m.id.length)) || /(.)\1{5,}|[^a-zA-Z0-9]|[^0-9A-F]/.test(m.id) || false
 		m.isGroup = m.chat.endsWith('@g.us')
 		if (!m.isGroup && m.chat.endsWith('@lid')) m.chat = nimesha.findJidByLid(m.chat, store) || m.chat;
-		m.sender = nimesha.decodeJid(m.fromMe && nimesha.user.id || m.key.participant || m.chat || '')
+		m.sender = nimesha.decodeJid(m.fromMe && (global.owner?.[0] ? global.owner[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net' : nimesha.user.id) || m.key.participant || m.chat || '')
+		// lid format නම් real jid එකට convert කරන්න
+		if (m.sender && m.sender.endsWith('@lid')) {
+			const realJid = nimesha.findJidByLid(m.sender, store)
+			if (realJid && !realJid.endsWith('@lid')) m.sender = realJid
+		}
 		if (m.isGroup) {
 			if (!store.groupMetadata) store.groupMetadata = await nimesha.groupFetchAllParticipating().catch(e => ({}));
 			let metadata = store.groupMetadata[m.chat] ? store.groupMetadata[m.chat] : (store.groupMetadata[m.chat] = await nimesha.groupMetadata(m.chat).catch(e => ({ ...store.groupMetadata[m.chat] })));
