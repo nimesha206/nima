@@ -971,15 +971,54 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
             }
         }
 
-        // .attp (animated text sticker)
+        // .attp (animated text sticker) — ffmpeg local render + API fallback
         else if (cmd === 'attp') {
             if (!q) return await nimesha.sendMessage(m.chat, { text: `⚠️ Text ඇතුළත් කරන්න!\nඋදා: ${prefix}attp Hello\n${botFooter}` }, { quoted: m });
-            const imgBuffer = await tryFetch([
-                async () => { const r = await axios.get(`https://api.paxsenix.biz.id/sticker/attp?text=${encodeURIComponent(q)}`, { responseType: 'arraybuffer', timeout: 15000 }); return Buffer.from(r.data); },
-                async () => { const r = await axios.get(`https://api.lolhuman.xyz/api/attp?apikey=demo&text=${encodeURIComponent(q)}`, { responseType: 'arraybuffer', timeout: 15000 }); return Buffer.from(r.data); }
-            ]);
-            if (imgBuffer) await nimesha.sendMessage(m.chat, { sticker: imgBuffer }, { quoted: m });
-            else await nimesha.sendMessage(m.chat, { text: `❌ ATTP generate කිරීමට නොහැකිය\n${botFooter}` }, { quoted: m });
+            const atttpWaitMsg = await nimesha.sendMessage(m.chat, { text: `🎨 *ATTP Sticker Generate කරමින්...*\n📝 *Text:* ${q}\n⏳ රැඳෙන්න...\n${botFooter}` }, { quoted: m });
+            try {
+                // ffmpeg local render — බ්ලින්ක් animation සහිතව (රතු, නිල්, කොළ)
+                const mp4Buffer = await new Promise((resolve, reject) => {
+                    const { spawn } = require('child_process');
+                    const fontPath = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf';
+                    const escTxt = (s) => s.replace(/\\/g,'\\\\').replace(/:/g,'\\:').replace(/,/g,'\\,').replace(/'/g,"\\'").replace(/\[/g,'\\[').replace(/\]/g,'\\]').replace(/%/g,'\\%');
+                    const safeText = escTxt(q);
+                    const cycle = 0.3, dur = 1.8;
+                    const base = `fontfile='${fontPath}':text='${safeText}':borderw=2:bordercolor=black@0.6:fontsize=56:x=(w-text_w)/2:y=(h-text_h)/2`;
+                    const drawRed   = `drawtext=${base}:fontcolor=red:enable='lt(mod(t\\,${cycle})\\,0.1)'`;
+                    const drawBlue  = `drawtext=${base}:fontcolor=blue:enable='between(mod(t\\,${cycle})\\,0.1\\,0.2)'`;
+                    const drawGreen = `drawtext=${base}:fontcolor=green:enable='gte(mod(t\\,${cycle})\\,0.2)'`;
+                    const args = [
+                        '-y', '-f', 'lavfi', '-i', `color=c=black:s=512x512:d=${dur}:r=20`,
+                        '-vf', `${drawRed},${drawBlue},${drawGreen}`,
+                        '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
+                        '-movflags', '+faststart+frag_keyframe+empty_moov',
+                        '-t', String(dur), '-f', 'mp4', 'pipe:1'
+                    ];
+                    const ff = spawn('ffmpeg', args);
+                    const chunks = [], errors = [];
+                    ff.stdout.on('data', d => chunks.push(d));
+                    ff.stderr.on('data', e => errors.push(e));
+                    ff.on('error', reject);
+                    ff.on('close', code => code === 0 ? resolve(Buffer.concat(chunks)) : reject(new Error(Buffer.concat(errors).toString())));
+                });
+                const { videoToWebp } = require('./lib/exif');
+                const webpBuffer = await videoToWebp(mp4Buffer);
+                try { await nimesha.sendMessage(m.chat, { delete: atttpWaitMsg.key }); } catch(e) {}
+                await nimesha.sendMessage(m.chat, { sticker: webpBuffer }, { quoted: m });
+            } catch (ffErr) {
+                // ffmpeg fail — API fallback
+                console.log('ATTP ffmpeg error, API fallback:', ffErr.message);
+                const imgBuffer = await tryFetch([
+                    async () => { const r = await axios.get(`https://api.paxsenix.biz.id/sticker/attp?text=${encodeURIComponent(q)}`, { responseType: 'arraybuffer', timeout: 15000 }); return Buffer.from(r.data); },
+                    async () => { const r = await axios.get(`https://api.lolhuman.xyz/api/attp?apikey=demo&text=${encodeURIComponent(q)}`, { responseType: 'arraybuffer', timeout: 15000 }); return Buffer.from(r.data); }
+                ]);
+                if (imgBuffer) {
+                    try { await nimesha.sendMessage(m.chat, { delete: atttpWaitMsg.key }); } catch(e) {}
+                    await nimesha.sendMessage(m.chat, { sticker: imgBuffer }, { quoted: m });
+                } else {
+                    await nimesha.sendMessage(m.chat, { text: `❌ ATTP generate කිරීමට නොහැකිය\n${botFooter}`, edit: atttpWaitMsg.key });
+                }
+            }
         }
 
         // ══════════════════════════════════════════════════════
@@ -1036,7 +1075,7 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
                 `💻 *HACKING IN PROGRESS...*\n━━━━━━━━━━━━━━━━━━━━━━\n🎯 Target: ${target}\n⚡ [▓▓▓▓▓▓▓░░░] 70% — Extracting data...`,
                 `✅ *HACK COMPLETE!*\n━━━━━━━━━━━━━━━━━━━━━━\n🎯 Target: ${target}\n⚡ [▓▓▓▓▓▓▓▓▓▓] 100%\n📊 Password: 1234567890\n📧 Email: hacked@fake.com\n💰 Balance: $999,999\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}`
             ];
-            let hackMsg = await nimesha.sendMessage(m.chat, { text: stages[0] }, { quoted: m });
+            let hackMsg = await nimesha.sendMessage(m.chat, { text: stages[0] });
             for (let i = 1; i < stages.length; i++) {
                 await new Promise(r => setTimeout(r, 2000));
                 await nimesha.sendMessage(m.chat, { text: stages[i], edit: hackMsg.key });
@@ -1367,19 +1406,29 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
         }
 
         // ══════════════════════════════════════════════════════
-        // ════════ AUTO STATUS REACT ═══════════════════════════
+        // ════════ AUTO STATUS VIEW + REACT ════════════════════
         // ══════════════════════════════════════════════════════
-        if (m.messages && Object.values(m.messages).some(msg => msg?.message?.statusMessage)) {
+        if (m.messages && Object.values(m.messages).some(msg => msg?.key?.remoteJid === 'status@broadcast')) {
             try {
                 if (set.autostatus) {
                     for (const message of Object.values(m.messages)) {
-                        if (message?.message?.statusMessage) {
-                            const statusSender = message.key.participant || message.key.remoteJid;
-                            const emoji = getRandomEmoji();
+                        if (message?.key?.remoteJid === 'status@broadcast') {
                             try {
-                                await nimesha.sendMessage(statusSender, { react: { text: emoji, key: message.key } }).catch(() => {});
-                                console.log(`❤️ AutoStatus - @${statusSender.split('@')[0]} ට ${emoji}`);
-                            } catch (e) { console.log('AutoStatus error:', e.message); }
+                                // Status ස්වයංක්‍රීයව read/view කරනවා
+                                await nimesha.readMessages([message.key]);
+                                console.log(`👁️ AutoStatus View - @${(message.key.participant || '').split('@')[0]}`);
+                                // autoreact enabled නම් react කරනවා
+                                if (set.autostatusreact) {
+                                    const emoji = getRandomEmoji();
+                                    await nimesha.sendMessage(message.key.participant || message.key.remoteJid, { react: { text: emoji, key: message.key } }).catch(() => {});
+                                    console.log(`❤️ AutoStatus React - ${emoji}`);
+                                }
+                            } catch (e) {
+                                if (e.message?.includes('rate-overlimit')) {
+                                    await new Promise(r => setTimeout(r, 2000));
+                                    await nimesha.readMessages([message.key]).catch(() => {});
+                                }
+                            }
                         }
                     }
                 }
@@ -1391,6 +1440,25 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
         }
 
         if (Math.random() < 0.1) { musicDownloader.cleanTemp(); }
+
+
+        // ══════════════════════════════════════════════════════
+        // ════════ AUTO RECORDING PRESENCE ════════════════════
+        // ══════════════════════════════════════════════════════
+        // user message receive කළාම recording presence show කරනවා
+        if (set.autorecording && m.chat && !m.fromMe && m.isChats) {
+            try {
+                const userText = m.body || m.text || '';
+                await nimesha.presenceSubscribe(m.chat);
+                await nimesha.sendPresenceUpdate('available', m.chat);
+                await new Promise(r => setTimeout(r, 500));
+                await nimesha.sendPresenceUpdate('recording', m.chat);
+                // message length අනුව recording delay — min 3s, max 8s
+                const recDelay = Math.max(3000, Math.min(8000, userText.length * 150));
+                await new Promise(r => setTimeout(r, recDelay));
+                await nimesha.sendPresenceUpdate('paused', m.chat);
+            } catch (e) { console.log('AutoRecording error:', e.message); }
+        }
 
     } catch (e) { console.error('Main error:', e); }
 };

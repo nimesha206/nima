@@ -89,6 +89,8 @@ module.exports = nimesha = async (nimesha, m, msg, store) => {
 	
 	if (set.antidelete === undefined) set.antidelete = false;
 	if (set.autostatus === undefined) set.autostatus = false;
+	if (set.autostatusreact === undefined) set.autostatusreact = false;
+	if (set.autorecording === undefined) set.autorecording = false;
 	try {
 		await GroupUpdate(nimesha, m, store);
 		
@@ -1822,7 +1824,7 @@ _ස්තූතියි!_ 🌸`).then(() => {
 						m.reply('*Private Only ලෙස සාර්ථකව වෙනස් කෙරිණ*')
 					} else m.reply('Mode: self/public/group/private/all')
 					break
-					case 'anticall': case 'autobio': case 'autoread': case 'autotyping': case 'readsw': case 'multiprefix': case 'antispam': case 'antidelete': case 'autostatus': case 'didyoumean':
+					case 'anticall': case 'autobio': case 'autoread': case 'autotyping': case 'readsw': case 'multiprefix': case 'antispam': case 'antidelete': case 'autostatus': case 'autostatusreact': case 'autorecording': case 'didyoumean':
 					if (!isCreator) return m.reply(mess.owner)
 					if (args[1] == 'on') {
 						if (set[args[0]]) return m.reply('*මීට පෙර සක්‍රිය කර ඇත*')
@@ -1843,13 +1845,13 @@ _ස්තූතියි!_ 🌸`).then(() => {
 					default:
 				if (args[0] || args[1]) {
 					if (command !== 'bot') return;
-					const validSettings = ['mode', 'anticall', 'antidelete', 'autostatus', 'autobio', 'autoread', 'autotyping', 'readsw', 'multiprefix'];
+					const validSettings = ['mode', 'anticall', 'antidelete', 'autostatus', 'autostatusreact', 'autorecording', 'autobio', 'autoread', 'autotyping', 'readsw', 'multiprefix'];
 					
 					if (!validSettings.includes(args[0])) {
 						return m.reply(`❌ *විධානය වැරදිය!*\n\n✅ නිවැරදි විධාන:\n\n${validSettings.map(s => `${prefix}bot ${s} on/off`).join('\n')}`);
 					}
 					
-					m.reply(`*කරුණාකර Settings තෝරන්න:*\n- Mode : *${prefix + command} mode self/public*\n- Anti Call : *${prefix + command} anticall on/off*\n- Anti Delete : *${prefix + command} antidelete on/off*\n- Auto Status : *${prefix + command} autostatus on/off*\n- Auto Bio : *${prefix + command} autobio on/off*\n- Auto Read : *${prefix + command} autoread on/off*\n- Auto Typing : *${prefix + command} autotyping on/off*\n- Read Sw : *${prefix + command} readsw on/off*\n- Multi Prefix : *${prefix + command} multiprefix on/off*`);
+					m.reply(`*කරුණාකර Settings තෝරන්න:*\n- Mode : *${prefix + command} mode self/public*\n- Anti Call : *${prefix + command} anticall on/off*\n- Anti Delete : *${prefix + command} antidelete on/off*\n- Auto Status : *${prefix + command} autostatus on/off*\n- Auto Status React : *${prefix + command} autostatusreact on/off*\n- Auto Recording : *${prefix + command} autorecording on/off*\n- Auto Bio : *${prefix + command} autobio on/off*\n- Auto Read : *${prefix + command} autoread on/off*\n- Auto Typing : *${prefix + command} autotyping on/off*\n- Read Sw : *${prefix + command} readsw on/off*\n- Multi Prefix : *${prefix + command} multiprefix on/off*`);
 				}
 				}
 				if (!args[0] && !args[1]) return m.reply(`*Bot ක්‍රියාත්මකව ඇත්තේ*\n*${runtime(process.uptime())}*`)
