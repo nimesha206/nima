@@ -350,7 +350,8 @@ module.exports = nimesha = async (nimesha, m, msg, store) => {
 		}
 		
 		const isRealOwner = ownerNumber.filter(v => typeof v === 'string').map(v => v.replace(/[^0-9]/g, '')).includes(m.sender.split('@')[0])
-		if (isCmd && isRealOwner && command && prefix && body.startsWith(prefix)) {
+		// ok sir — group chat හිදී පමණි (private chat හිදී නෑ)
+		if (isCmd && isRealOwner && command && prefix && body.startsWith(prefix) && m.isGroup) {
 			await m.react('🫡')
 			await m.reply('ok sir')
 		}
