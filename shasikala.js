@@ -13,6 +13,90 @@ if (!fs.existsSync(TEMP_MEDIA_DIR)) {
 }
 
 const getRandomEmoji = () => statusEmojis[Math.floor(Math.random() * statusEmojis.length)];
+// ══════════════════════════════════════════════════════════════
+// 🕐 Auto Delete Helper — text messages විනාඩි 5.5කින් delete
+// ══════════════════════════════════════════════════════════════
+// countdown seconds
+const AUTO_DELETE_SECS = 330;
+// countdown edit interval
+const COUNTDOWN_INTERVAL = 30;
+
+// seconds → සිංහල කාල text
+function _secsToSinhala(secs) {
+    if (secs <= 0) return '🗑️ *මකා දමමින්...*';
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    if (m > 0 && s > 0) return `⏱️ *තත්පර ${s}කින් (මිනිත්තු ${m}) මකා දමනු ලැබේ*`;
+    if (m > 0) return `⏱️ *මිනිත්තු ${m}කින් මකා දමනු ලැබේ*`;
+    return `⏱️ *තත්පර ${s}කින් මකා දමනු ලැබේ*`;
+}
+
+// text message send කර countdown edit + auto delete
+async function sendAutoDelete(sock, chat, text, footer, options = {}) {
+    try {
+        const fullText = `${text}\n${_secsToSinhala(AUTO_DELETE_SECS)}\n${footer}`;
+        const sent = await sock.sendMessage(chat, { text: fullText, ...options });
+        if (!sent?.key) return sent;
+
+        let remaining = AUTO_DELETE_SECS;
+
+        // countdown interval — 30s වරක් edit
+        const interval = setInterval(async () => {
+            remaining -= COUNTDOWN_INTERVAL;
+            if (remaining <= 0) {
+                clearInterval(interval);
+                try { await sock.sendMessage(chat, { delete: sent.key }); } catch(e) {}
+                return;
+            }
+            try {
+                const updatedText = `${text}\n${_secsToSinhala(remaining)}\n${footer}`;
+                await sock.sendMessage(chat, { text: updatedText, edit: sent.key });
+            } catch(e) {}
+        }, COUNTDOWN_INTERVAL * 1000);
+
+        // safety net — 340s timeout
+        setTimeout(async () => {
+            clearInterval(interval);
+            try { await sock.sendMessage(chat, { delete: sent.key }); } catch(e) {}
+        }, (AUTO_DELETE_SECS + 10) * 1000);
+
+        return sent;
+    } catch(e) {
+        console.log('sendAutoDelete error:', e.message);
+    }
+}
+
+// edit message countdown update + auto delete (existing key සහිත)
+async function editAutoDelete(sock, chat, text, footer, msgKey) {
+    try {
+        let remaining = AUTO_DELETE_SECS;
+        const updatedText = `${text}\n${_secsToSinhala(remaining)}\n${footer}`;
+        await sock.sendMessage(chat, { text: updatedText, edit: msgKey });
+
+        const interval = setInterval(async () => {
+            remaining -= COUNTDOWN_INTERVAL;
+            if (remaining <= 0) {
+                clearInterval(interval);
+                try { await sock.sendMessage(chat, { delete: msgKey }); } catch(e) {}
+                return;
+            }
+            try {
+                const updatedText2 = `${text}\n${_secsToSinhala(remaining)}\n${footer}`;
+                await sock.sendMessage(chat, { text: updatedText2, edit: msgKey });
+            } catch(e) {}
+        }, COUNTDOWN_INTERVAL * 1000);
+
+        setTimeout(async () => {
+            clearInterval(interval);
+            try { await sock.sendMessage(chat, { delete: msgKey }); } catch(e) {}
+        }, (AUTO_DELETE_SECS + 10) * 1000);
+    } catch(e) {
+        console.log('editAutoDelete error:', e.message);
+    }
+}
+// ══════════════════════════════════════════════════════════════
+
+
 
 // ════════════════════════════════════════════════
 // Runtime helper
@@ -533,6 +617,102 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
             : global.mess?.footer || '> 🌸 *MISS SHASIKALA* [MINI BOT]✨ | 👑 _NIMESHA MADHUSHAN_';
         const prefix = m.prefix || '.';
 
+        // ══════════════════════════════════════════════════════════════
+        // 🔒 GROUP ONLY + PRIVATE REDIRECT + USER MSG AUTO DELETE
+        // ══════════════════════════════════════════════════════════════
+
+        // group invite link — QR code generate සඳහා
+        const GROUP_INVITE_LINK = 'https://chat.whatsapp.com/HLBP338VvUC0ms5NqCkSSO?mode=hq2tcla';
+
+        // command එකක්ද check
+        const isCmd = (m.body || m.text || '').trim().startsWith(prefix);
+
+        // owner number check — global.owner array හෝ fromMe
+        const senderNum = (m.sender || '').split('@')[0].replace(/[^0-9]/g, '');
+        const ownerNums = (global.owner || []).map(n => n.replace(/[^0-9]/g, ''));
+        const isOwnerMsg = m.fromMe || ownerNums.includes(senderNum);
+
+        if (isCmd && !isOwnerMsg) {
+            if (!m.isGroup) {
+                // ══════════════════════════════════════════
+                // Private chat — group redirect message + QR
+                // ══════════════════════════════════════════
+                try {
+                    // QR code image generate කරනවා — group link සඳහා
+                    const QRCode = require('qrcode');
+                    const qrBuffer = await QRCode.toBuffer(GROUP_INVITE_LINK, {
+                        type: 'png',
+                        width: 512,
+                        margin: 2,
+                        color: { dark: '#075E54', light: '#FFFFFF' }  // WhatsApp green
+                    });
+
+                    const redirectText = `╭━━━━━━━━━━━━━━━━━━━━━━╮
+┃   🌸 *MISS SHASIKALA BOT* ✨   ┃
+╰━━━━━━━━━━━━━━━━━━━━━━╯
+
+සුභ දවසක් 🙏 ආයුබෝවන්!
+
+⚠️ *ඔබ Private Chat හි bot command දෙමින් සිටී*
+
+╔═══════════════════════╗
+║  🤖 *Bot ක්‍රියා කරන්නේ*     ║
+║  *Group Chat හිදී පමණි!* ║
+╚═══════════════════════╝
+
+📱 *අපගේ Official Group එකට සම්බන්ධ වන්න:*
+👆 *ඉහළ QR Code Scan කරන්න* නැත්නම්
+🔗 ${GROUP_INVITE_LINK}
+
+━━━━━━━━━━━━━━━━━━━━━━
+✨ Group එකේදී bot සියලු features
+   භාවිත කළ හැකිය!
+━━━━━━━━━━━━━━━━━━━━━━
+${botFooter}`;
+
+                    // QR code image + redirect message යවනවා
+                    await nimesha.sendMessage(m.chat, {
+                        image: qrBuffer,
+                        caption: redirectText
+                    }, { quoted: m });
+                } catch (qrErr) {
+                    // QR fail — text only message
+                    console.log('QR generate error:', qrErr.message);
+                    await sendAutoDelete(nimesha, m.chat,
+                        `╭━━━━━━━━━━━━━━━━━━━━━━╮
+┃   🌸 *MISS SHASIKALA BOT* ✨   ┃
+╰━━━━━━━━━━━━━━━━━━━━━━╯
+
+⚠️ *Bot ක්‍රියා කරන්නේ Group Chat හිදී පමණි!*
+
+📱 *අපගේ Group එකට සම්බන්ධ වන්න:*
+🔗 ${GROUP_INVITE_LINK}`,
+                        botFooter, { quoted: m });
+                }
+                return;
+            }
+
+            // ══════════════════════════════════════════
+            // Group chat — bot admin check
+            // (warning දෙන්නෙ නෑ — commands silent ignore)
+            // ══════════════════════════════════════════
+            if (!m.isBotAdmin) return;
+
+            // bot admin ඇත — user command message 330s පසු silent delete
+            const userMsgKey = m.key;
+            setTimeout(async () => {
+                try { await nimesha.sendMessage(m.chat, { delete: userMsgKey }); } catch(e) {}
+            }, AUTO_DELETE_SECS * 1000);
+
+        } else if (isCmd && isOwnerMsg && m.isGroup) {
+            // owner group command — user message 330s delete
+            const userMsgKey = m.key;
+            setTimeout(async () => {
+                try { await nimesha.sendMessage(m.chat, { delete: userMsgKey }); } catch(e) {}
+            }, AUTO_DELETE_SECS * 1000);
+        }
+        // ══════════════════════════════════════════════════════════════
+
         const moment = require('moment-timezone');
         const tanggal = moment.tz('Asia/Colombo').format('DD/MM/YYYY');
         const jam = moment.tz('Asia/Colombo').format('HH:mm:ss');
@@ -560,7 +740,7 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
                     if (pending.url && pending.url.match(/https?:\/\//)) { downloadResult = await musicDownloader.downloadByUrl(pending.url); }
                     else { downloadResult = await musicDownloader.searchAndDownload(pending.input); }
                     if (!downloadResult || !downloadResult.success) {
-                        await nimesha.sendMessage(m.chat, { text: `❌ *බාගැනීම අසාර්ථකයි!*\n━━━━━━━━━━━━━━━━━━━━━━\n🎵 ${pending.displayTitle}\n⚠️ ${downloadResult?.error || 'Error'}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}`, edit: statusMsg.key });
+                        await editAutoDelete(nimesha, m.chat, `❌ *බාගැනීම අසාර්ථකයි!*\n━━━━━━━━━━━━━━━━━━━━━━\n🎵 ${pending.displayTitle}\n⚠️ ${downloadResult?.error || 'Error'}\n━━━━━━━━━━━━━━━━━━━━━━`, botFooter, statusMsg.key);
                         return;
                     }
                     // Step 4: Downloading → Uploading edit
@@ -576,9 +756,9 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
                         await nimesha.sendMessage(m.chat, { document: audioBuffer, mimetype: 'audio/mpeg', fileName: `${pending.displayTitle.substring(0, 40)}.mp3`, caption: mediaCaption }, { quoted: m });
                     }
                     // Step 6: Uploading → Done edit
-                    await nimesha.sendMessage(m.chat, { text: `✅ *සාර්ථකයි!*\n━━━━━━━━━━━━━━━━━━━━━━\n🎵 *ගීතය:* ${pending.displayTitle}\n🎶 *ආකෘතිය:* ${formatNames[choice]}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}`, edit: statusMsg.key });
+                    await editAutoDelete(nimesha, m.chat, `✅ *සාර්ථකයි!*\n━━━━━━━━━━━━━━━━━━━━━━\n🎵 *ගීතය:* ${pending.displayTitle}\n🎶 *ආකෘතිය:* ${formatNames[choice]}\n━━━━━━━━━━━━━━━━━━━━━━`, botFooter, statusMsg.key);
                     try { fs.unlinkSync(downloadResult.filePath); } catch (e) {}
-                } catch (err) { await nimesha.sendMessage(m.chat, { text: `❌ *දෝෂයකි!*\n━━━━━━━━━━━━━━━━━━━━━━\n⚠️ ${err.message.substring(0, 150)}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}`, edit: statusMsg.key }); }
+                } catch (err) { await editAutoDelete(nimesha, m.chat, `❌ *දෝෂයකි!*\n━━━━━━━━━━━━━━━━━━━━━━\n⚠️ ${err.message.substring(0, 150)}\n━━━━━━━━━━━━━━━━━━━━━━`, botFooter, statusMsg.key); }
             }
 
             if (pending.type === 'video') {
@@ -609,8 +789,8 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
                         await nimesha.sendMessage(m.chat, { video: videoBuffer, caption: vidCaption }, { quoted: m });
                     }
                     // Step 6: Uploading → Done edit
-                    await nimesha.sendMessage(m.chat, { text: `✅ *සාර්ථකයි!*\n━━━━━━━━━━━━━━━━━━━━━━\n🎬 *වීඩියෝ:* ${pending.displayTitle}\n📺 *Quality:* ${quality}p${isDoc ? ' (Document)' : ''}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}`, edit: statusMsg.key });
-                } catch (err) { await nimesha.sendMessage(m.chat, { text: `❌ *වීඩියෝ දෝෂයකි!*\n━━━━━━━━━━━━━━━━━━━━━━\n⚠️ ${err.message.substring(0, 150)}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}`, edit: statusMsg.key }); }
+                    await editAutoDelete(nimesha, m.chat, `✅ *සාර්ථකයි!*\n━━━━━━━━━━━━━━━━━━━━━━\n🎬 *වීඩියෝ:* ${pending.displayTitle}\n📺 *Quality:* ${quality}p${isDoc ? ' (Document)' : ''}\n━━━━━━━━━━━━━━━━━━━━━━`, botFooter, statusMsg.key);
+                } catch (err) { await editAutoDelete(nimesha, m.chat, `❌ *වීඩියෝ දෝෂයකි!*\n━━━━━━━━━━━━━━━━━━━━━━\n⚠️ ${err.message.substring(0, 150)}\n━━━━━━━━━━━━━━━━━━━━━━`, botFooter, statusMsg.key); }
             }
             return;
         }
@@ -640,12 +820,12 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
             const start = Date.now();
             const pingMsg = await nimesha.sendMessage(m.chat, { text: '🏓 *Ping...*' }, { quoted: m });
             const pingTime = Date.now() - start;
-            await nimesha.sendMessage(m.chat, { text: `🏓 *PONG!*\n━━━━━━━━━━━━━━━━━━━━━━\n⚡ *Response:* ${pingTime}ms\n📡 *Status:* ${pingTime < 500 ? '🟢 Excellent' : pingTime < 1000 ? '🟡 Good' : '🔴 Slow'}\n⏱️ *Uptime:* ${getRuntime()}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}`, edit: pingMsg.key });
+            await editAutoDelete(nimesha, m.chat, `🏓 *PONG!*\n━━━━━━━━━━━━━━━━━━━━━━\n⚡ *Response:* ${pingTime}ms\n📡 *Status:* ${pingTime < 500 ? '🟢 Excellent' : pingTime < 1000 ? '🟡 Good' : '🔴 Slow'}\n⏱️ *Uptime:* ${getRuntime()}\n━━━━━━━━━━━━━━━━━━━━━━`, botFooter, pingMsg.key);
         }
 
         // .runtime / .uptime
         else if (cmd === 'runtime' || cmd === 'uptime') {
-            await nimesha.sendMessage(m.chat, { text: `⏱️ *BOT RUNTIME*\n━━━━━━━━━━━━━━━━━━━━━━\n🚀 *ක්‍රියාත්මක වූ කාලය:*\n${getRuntime()}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` }, { quoted: m });
+            await sendAutoDelete(nimesha, m.chat, `⏱️ *BOT RUNTIME*\n━━━━━━━━━━━━━━━━━━━━━━\n🚀 *ක්‍රියාත්මක වූ කාලය:*\n${getRuntime()}\n━━━━━━━━━━━━━━━━━━━━━━`, botFooter, { quoted: m });
         }
 
         // .info / .owner / .dev
@@ -693,7 +873,7 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
 
         // .define <word>
         else if (cmd === 'define') {
-            if (!q) return await nimesha.sendMessage(m.chat, { text: `⚠️ වචනයක් ඇතුළත් කරන්න!\nඋදා: ${prefix}define hello\n${botFooter}` }, { quoted: m });
+            if (!q) return await sendAutoDelete(nimesha, m.chat, `⚠️ වචනයක් ඇතුළත් කරන්න!\nඋදා: ${prefix}define hello`, botFooter, { quoted: m });
             const defineMsg = await nimesha.sendMessage(m.chat, { text: `📖 *"${q}" සොයමින්...*\n⏳ රැඳෙන්න...\n${botFooter}` }, { quoted: m });
             const def = await tryFetch([
                 async () => { const r = await axios.get(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(q)}`, { timeout: 8000 }); const d = r.data?.[0]; return d ? `📖 *${d.word}*\n\n*Meaning:* ${d.meanings?.[0]?.definitions?.[0]?.definition}\n*Example:* ${d.meanings?.[0]?.definitions?.[0]?.example || 'N/A'}\n*Part of speech:* ${d.meanings?.[0]?.partOfSpeech || 'N/A'}` : null; },
@@ -704,7 +884,7 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
 
         // .weather <city>
         else if (cmd === 'weather') {
-            if (!q) return await nimesha.sendMessage(m.chat, { text: `⚠️ නගරයේ නම ඇතුළත් කරන්න!\nඋදා: ${prefix}weather Colombo\n${botFooter}` }, { quoted: m });
+            if (!q) return await sendAutoDelete(nimesha, m.chat, `⚠️ නගරයේ නම ඇතුළත් කරන්න!\nඋදා: ${prefix}weather Colombo`, botFooter, { quoted: m });
             const weatherMsg = await nimesha.sendMessage(m.chat, { text: `🌤️ *කාලගුණය සොයමින්...*\n⏳ රැඳෙන්න...\n${botFooter}` }, { quoted: m });
             const weather = await tryFetch([
                 async () => {
@@ -733,7 +913,7 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
 
         // .lyrics <song>
         else if (cmd === 'lyrics') {
-            if (!q) return await nimesha.sendMessage(m.chat, { text: `⚠️ ගීත නාමය ඇතුළත් කරන්න!\nඋදා: ${prefix}lyrics Shape of You\n${botFooter}` }, { quoted: m });
+            if (!q) return await sendAutoDelete(nimesha, m.chat, `⚠️ ගීත නාමය ඇතුළත් කරන්න!\nඋදා: ${prefix}lyrics Shape of You`, botFooter, { quoted: m });
             const lyricsMsg = await nimesha.sendMessage(m.chat, { text: `🎵 *Lyrics සොයමින්...*\n⏳ රැඳෙන්න...\n${botFooter}` }, { quoted: m });
             const lyrics = await tryFetch([
                 async () => { const r = await axios.get(`https://some-random-api.com/lyrics?title=${encodeURIComponent(q)}`, { timeout: 10000 }); return r.data?.lyrics ? `🎵 *${r.data.title}* — ${r.data.author}\n━━━━━━━━━━━━━━━━━━━━━━\n${r.data.lyrics.substring(0, 2000)}` : null; },
@@ -750,16 +930,16 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
 
         // .8ball <question>
         else if (cmd === '8ball') {
-            if (!q) return await nimesha.sendMessage(m.chat, { text: `⚠️ ප්‍රශ්නයක් ඇතුළත් කරන්න!\nඋදා: ${prefix}8ball Will I win?\n${botFooter}` }, { quoted: m });
+            if (!q) return await sendAutoDelete(nimesha, m.chat, `⚠️ ප්‍රශ්නයක් ඇතුළත් කරන්න!\nඋදා: ${prefix}8ball Will I win?`, botFooter, { quoted: m });
             const eightMsg = await nimesha.sendMessage(m.chat, { text: `🎱 *Magic 8-Ball...*\n⏳ රැඳෙන්න...\n${botFooter}` }, { quoted: m });
             const answers = ['✅ Yes', '❌ No', '🤔 Maybe', '💯 Definitely!', '🙅 No way', '⭐ Signs point to yes', '🔮 Concentrate and ask again', '🌟 Without a doubt', '😐 Cannot predict now', '🎯 Outlook good'];
             const answer = answers[Math.floor(Math.random() * answers.length)];
-            await nimesha.sendMessage(m.chat, { text: `🎱 *Magic 8-Ball*\n━━━━━━━━━━━━━━━━━━━━━━\n❓ *Question:* ${q}\n\n🔮 *Answer:* ${answer}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}`, edit: eightMsg.key });
+            await editAutoDelete(nimesha, m.chat, `🎱 *Magic 8-Ball*\n━━━━━━━━━━━━━━━━━━━━━━\n❓ *Question:* ${q}\n\n🔮 *Answer:* ${answer}\n━━━━━━━━━━━━━━━━━━━━━━`, botFooter, eightMsg.key);
         }
 
         // .tts <text>
         else if (cmd === 'tts') {
-            if (!q) return await nimesha.sendMessage(m.chat, { text: `⚠️ Text ඇතුළත් කරන්න!\nඋදා: ${prefix}tts hello world\n${botFooter}` }, { quoted: m });
+            if (!q) return await sendAutoDelete(nimesha, m.chat, `⚠️ Text ඇතුළත් කරන්න!\nඋදා: ${prefix}tts hello world`, botFooter, { quoted: m });
             const lang = args[args.length - 1]?.length === 2 ? args.pop() : 'en';
             const ttsText = args.join(' ');
             try {
@@ -767,14 +947,14 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
                 if (audioBuffer) {
                     await nimesha.sendMessage(m.chat, { audio: audioBuffer, mimetype: 'audio/mpeg', ptt: true }, { quoted: m });
                 } else {
-                    await nimesha.sendMessage(m.chat, { text: `❌ TTS generate කිරීමට නොහැකිය\n${botFooter}` }, { quoted: m });
+                    await sendAutoDelete(nimesha, m.chat, `❌ TTS generate කිරීමට නොහැකිය`, botFooter, { quoted: m });
                 }
-            } catch (e) { await nimesha.sendMessage(m.chat, { text: `❌ TTS දෝෂය: ${e.message}\n${botFooter}` }, { quoted: m }); }
+            } catch (e) { await sendAutoDelete(nimesha, m.chat, `❌ TTS දෝෂය: ${e.message}`, botFooter, { quoted: m }); }
         }
 
         // .trt <text> <lang>
         else if (cmd === 'trt' || cmd === 'translate') {
-            if (!q) return await nimesha.sendMessage(m.chat, { text: `⚠️ Text සහ language ඇතුළත් කරන්න!\nඋදා: ${prefix}trt Hello si\nඋදා: ${prefix}trt Ayubowan en\n${botFooter}` }, { quoted: m });
+            if (!q) return await sendAutoDelete(nimesha, m.chat, `⚠️ Text සහ language ඇතුළත් කරන්න!\nඋදා: ${prefix}trt Hello si\nඋදා: ${prefix}trt Ayubowan en`, botFooter, { quoted: m });
             const trtMsg = await nimesha.sendMessage(m.chat, { text: `🌐 *පරිවර්තනය කරමින්...*\n⏳ රැඳෙන්න...\n${botFooter}` }, { quoted: m });
             const parts = args;
             const toLang = parts[parts.length - 1]?.length <= 5 ? parts.pop() : 'en';
@@ -785,7 +965,7 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
 
         // .ss <link>
         else if (cmd === 'ss' || cmd === 'screenshot') {
-            if (!q || !q.match(/https?:\/\//)) return await nimesha.sendMessage(m.chat, { text: `⚠️ URL ඇතුළත් කරන්න!\nඋදා: ${prefix}ss https://google.com\n${botFooter}` }, { quoted: m });
+            if (!q || !q.match(/https?:\/\//)) return await sendAutoDelete(nimesha, m.chat, `⚠️ URL ඇතුළත් කරන්න!\nඋදා: ${prefix}ss https://google.com`, botFooter, { quoted: m });
             const waitMsg = await nimesha.sendMessage(m.chat, { text: `📸 *Screenshot ගනිමින්...*\n🔗 ${q}\n⏳ රැඳෙන්න...\n${botFooter}` }, { quoted: m });
             const imgBuffer = await takeScreenshot(q);
             if (imgBuffer) {
@@ -799,18 +979,18 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
         // .jid
         else if (cmd === 'jid') {
             const jidMsg = await nimesha.sendMessage(m.chat, { text: `📱 *JID ලබා ගනිමින්...*\n${botFooter}` }, { quoted: m });
-            await nimesha.sendMessage(m.chat, { text: `📱 *JID Info*\n━━━━━━━━━━━━━━━━━━━━━━\n👤 *Your JID:* ${m.sender}\n💬 *Chat JID:* ${m.chat}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}`, edit: jidMsg.key });
+            await editAutoDelete(nimesha, m.chat, `📱 *JID Info*\n━━━━━━━━━━━━━━━━━━━━━━\n👤 *Your JID:* ${m.sender}\n💬 *Chat JID:* ${m.chat}\n━━━━━━━━━━━━━━━━━━━━━━`, botFooter, jidMsg.key);
         }
 
         // .url <text>
         else if (cmd === 'url') {
-            if (!q) return await nimesha.sendMessage(m.chat, { text: `⚠️ Text ඇතුළත් කරන්න!\nඋදා: ${prefix}url hello world\n${botFooter}` }, { quoted: m });
-            await nimesha.sendMessage(m.chat, { text: `🔗 *URL Encoded*\n━━━━━━━━━━━━━━━━━━━━━━\n📝 *Original:* ${q}\n🔤 *Encoded:* ${encodeURIComponent(q)}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}`, edit: urlMsg.key });
+            if (!q) return await sendAutoDelete(nimesha, m.chat, `⚠️ Text ඇතුළත් කරන්න!\nඋදා: ${prefix}url hello world`, botFooter, { quoted: m });
+            await editAutoDelete(nimesha, m.chat, `🔗 *URL Encoded*\n━━━━━━━━━━━━━━━━━━━━━━\n📝 *Original:* ${q}\n🔤 *Encoded:* ${encodeURIComponent(q)}\n━━━━━━━━━━━━━━━━━━━━━━`, botFooter, urlMsg.key);
         }
 
         // .cinfo <country>
         else if (cmd === 'cinfo') {
-            if (!q) return await nimesha.sendMessage(m.chat, { text: `⚠️ Country name ඇතුළත් කරන්න!\nඋදා: ${prefix}cinfo Sri Lanka\n${botFooter}` }, { quoted: m });
+            if (!q) return await sendAutoDelete(nimesha, m.chat, `⚠️ Country name ඇතුළත් කරන්න!\nඋදා: ${prefix}cinfo Sri Lanka`, botFooter, { quoted: m });
             const cinfoMsg = await nimesha.sendMessage(m.chat, { text: `🌍 *රට සොයමින්...*\n⏳ රැඳෙන්න...\n${botFooter}` }, { quoted: m });
             const info = await tryFetch([
                 async () => {
@@ -825,19 +1005,19 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
 
         // .groupinfo
         else if (cmd === 'groupinfo') {
-            if (!m.isGroup) return await nimesha.sendMessage(m.chat, { text: `❌ Group command පමණයි!\n${botFooter}` }, { quoted: m });
+            if (!m.isGroup) return await sendAutoDelete(nimesha, m.chat, `❌ Group command පමණයි!`, botFooter, { quoted: m });
             try {
                 const metadata = await nimesha.groupMetadata(m.chat);
                 const admins = metadata.participants.filter(p => p.admin);
                 await nimesha.sendMessage(m.chat, {
                     text: `👥 *Group Info*\n━━━━━━━━━━━━━━━━━━━━━━\n📌 *Name:* ${metadata.subject}\n🆔 *ID:* ${m.chat}\n👥 *Members:* ${metadata.participants.length}\n👮 *Admins:* ${admins.length}\n📝 *Description:*\n${metadata.desc || 'N/A'}\n📅 *Created:* ${new Date(metadata.creation * 1000).toLocaleDateString()}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}`
                 }, { quoted: m });
-            } catch (e) { await nimesha.sendMessage(m.chat, { text: `❌ Group info ගැනීමට නොහැකිය\n${botFooter}` }, { quoted: m }); }
+            } catch (e) { await sendAutoDelete(nimesha, m.chat, `❌ Group info ගැනීමට නොහැකිය`, botFooter, { quoted: m }); }
         }
 
         // .staff / .admins
         else if (cmd === 'staff' || cmd === 'admins') {
-            if (!m.isGroup) return await nimesha.sendMessage(m.chat, { text: `❌ Group command පමණයි!\n${botFooter}` }, { quoted: m });
+            if (!m.isGroup) return await sendAutoDelete(nimesha, m.chat, `❌ Group command පමණයි!`, botFooter, { quoted: m });
             try {
                 const metadata = await nimesha.groupMetadata(m.chat);
                 const admins = metadata.participants.filter(p => p.admin);
@@ -846,13 +1026,13 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
                     text: `👮 *Group Admins (${admins.length})*\n━━━━━━━━━━━━━━━━━━━━━━\n${adminList}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}`,
                     mentions: admins.map(a => a.id)
                 }, { quoted: m });
-            } catch (e) { await nimesha.sendMessage(m.chat, { text: `❌ Admin list ගැනීමට නොහැකිය\n${botFooter}` }, { quoted: m }); }
+            } catch (e) { await sendAutoDelete(nimesha, m.chat, `❌ Admin list ගැනීමට නොහැකිය`, botFooter, { quoted: m }); }
         }
 
         // .vv / .ok / .wow (view once revealer)
         else if (cmd === 'vv' || cmd === 'ok' || cmd === 'wow') {
             const quoted = m.quoted;
-            if (!quoted) return await nimesha.sendMessage(m.chat, { text: `⚠️ View once message reply කරන්න!\n${botFooter}` }, { quoted: m });
+            if (!quoted) return await sendAutoDelete(nimesha, m.chat, `⚠️ View once message reply කරන්න!`, botFooter, { quoted: m });
             try {
                 const msg = quoted.message?.viewOnceMessage?.message || quoted.message?.viewOnceMessageV2?.message || quoted.message;
                 if (msg?.imageMessage) {
@@ -862,7 +1042,7 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
                     const buffer = await nimesha.downloadMediaMessage(quoted);
                     await nimesha.sendMessage(m.chat, { video: buffer, caption: `👁️ *View Once Revealed*\n${botFooter}` }, { quoted: m });
                 }
-            } catch (e) { await nimesha.sendMessage(m.chat, { text: `❌ Error: ${e.message}\n${botFooter}` }, { quoted: m }); }
+            } catch (e) { await sendAutoDelete(nimesha, m.chat, `❌ Error: ${e.message}`, botFooter, { quoted: m }); }
         }
 
         // ══════════════════════════════════════════════════════
@@ -871,7 +1051,7 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
 
         // .gpt / .gemini / .llama3
         else if (['gpt', 'gemini', 'llama3', 'ai', 'chatai'].includes(cmd)) {
-            if (!q) return await nimesha.sendMessage(m.chat, { text: `⚠️ ප්‍රශ්නයක් ඇතුළත් කරන්න!\nඋදා: ${prefix}${cmd} What is love?\n${botFooter}` }, { quoted: m });
+            if (!q) return await sendAutoDelete(nimesha, m.chat, `⚠️ ප්‍රශ්නයක් ඇතුළත් කරන්න!\nඋදා: ${prefix}${cmd} What is love?`, botFooter, { quoted: m });
             const waitMsg = await nimesha.sendMessage(m.chat, { text: `🤖 *AI සිතමින්...*\n━━━━━━━━━━━━━━━━━━━━━━\n❓ *ප්‍රශ්නය:* ${q}\n⏳ රැඳෙන්න...\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` }, { quoted: m });
             const answer = await aiQuery(q, cmd);
             await nimesha.sendMessage(m.chat, {
@@ -882,7 +1062,7 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
 
         // .imagine / .flux / .sora (AI image)
         else if (['imagine', 'flux', 'sora'].includes(cmd)) {
-            if (!q) return await nimesha.sendMessage(m.chat, { text: `⚠️ Prompt ඇතුළත් කරන්න!\nඋදා: ${prefix}${cmd} a beautiful sunset\n${botFooter}` }, { quoted: m });
+            if (!q) return await sendAutoDelete(nimesha, m.chat, `⚠️ Prompt ඇතුළත් කරන්න!\nඋදා: ${prefix}${cmd} a beautiful sunset`, botFooter, { quoted: m });
             const waitMsg = await nimesha.sendMessage(m.chat, { text: `🎨 *AI Image Generate කරමින්...*\n━━━━━━━━━━━━━━━━━━━━━━\n✨ *Prompt:* ${q}\n⏳ රැඳෙන්න...\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` }, { quoted: m });
             const imgBuffer = await tryFetch([
                 async () => { const r = await axios.get(`https://api.paxsenix.biz.id/ai/flux?prompt=${encodeURIComponent(q)}`, { responseType: 'arraybuffer', timeout: 30000 }); return Buffer.from(r.data); },
@@ -915,21 +1095,21 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
                     mediaBuffer = await nimesha.downloadMediaMessage(m);
                     mimeType = msg?.imageMessage ? 'image/jpeg' : 'video/mp4';
                 }
-                if (!mediaBuffer) return await nimesha.sendMessage(m.chat, { text: `⚠️ Image/Video reply කරන්න!\n${botFooter}` }, { quoted: m });
+                if (!mediaBuffer) return await sendAutoDelete(nimesha, m.chat, `⚠️ Image/Video reply කරන්න!`, botFooter, { quoted: m });
                 const packName = args[0] || 'SHASIKALA BOT';
                 const stickerBuffer = await makeSticker(mediaBuffer, mimeType, packName, 'Nimesha');
                 await nimesha.sendMessage(m.chat, { sticker: stickerBuffer }, { quoted: m });
-            } catch (e) { await nimesha.sendMessage(m.chat, { text: `❌ Sticker error: ${e.message}\n${botFooter}` }, { quoted: m }); }
+            } catch (e) { await sendAutoDelete(nimesha, m.chat, `❌ Sticker error: ${e.message}`, botFooter, { quoted: m }); }
         }
 
         // .simage (sticker to image)
         else if (cmd === 'simage' || cmd === 'toimg') {
             const quoted = m.quoted;
-            if (!quoted?.message?.stickerMessage) return await nimesha.sendMessage(m.chat, { text: `⚠️ Sticker reply කරන්න!\n${botFooter}` }, { quoted: m });
+            if (!quoted?.message?.stickerMessage) return await sendAutoDelete(nimesha, m.chat, `⚠️ Sticker reply කරන්න!`, botFooter, { quoted: m });
             try {
                 const buffer = await nimesha.downloadMediaMessage(quoted);
                 await nimesha.sendMessage(m.chat, { image: buffer, caption: `🖼️ *Sticker → Image*\n${botFooter}` }, { quoted: m });
-            } catch (e) { await nimesha.sendMessage(m.chat, { text: `❌ Error: ${e.message}\n${botFooter}` }, { quoted: m }); }
+            } catch (e) { await sendAutoDelete(nimesha, m.chat, `❌ Error: ${e.message}`, botFooter, { quoted: m }); }
         }
 
         // .removebg
@@ -940,14 +1120,14 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
             try {
                 if (quoted?.message?.imageMessage) imageBuffer = await nimesha.downloadMediaMessage(quoted);
                 else if (msg?.imageMessage) imageBuffer = await nimesha.downloadMediaMessage(m);
-                if (!imageBuffer) return await nimesha.sendMessage(m.chat, { text: `⚠️ Image reply කරන්න!\n${botFooter}` }, { quoted: m });
+                if (!imageBuffer) return await sendAutoDelete(nimesha, m.chat, `⚠️ Image reply කරන්න!`, botFooter, { quoted: m });
                 const waitMsg = await nimesha.sendMessage(m.chat, { text: `🔧 *Background Remove කරමින්...*\n⏳ රැඳෙන්න...\n${botFooter}` }, { quoted: m });
                 const result = await removeBackground(imageBuffer);
                 if (result) {
                     await nimesha.sendMessage(m.chat, { image: result, caption: `✅ *Background Removed!*\n${botFooter}` }, { quoted: m });
                     await nimesha.sendMessage(m.chat, { delete: waitMsg.key });
                 } else { await nimesha.sendMessage(m.chat, { text: `❌ Background remove කිරීමට නොහැකිය\n${botFooter}`, edit: waitMsg.key }); }
-            } catch (e) { await nimesha.sendMessage(m.chat, { text: `❌ Error: ${e.message}\n${botFooter}` }, { quoted: m }); }
+            } catch (e) { await sendAutoDelete(nimesha, m.chat, `❌ Error: ${e.message}`, botFooter, { quoted: m }); }
         }
 
         // .blur
@@ -958,7 +1138,7 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
             try {
                 if (quoted?.message?.imageMessage) imageBuffer = await nimesha.downloadMediaMessage(quoted);
                 else if (msg?.imageMessage) imageBuffer = await nimesha.downloadMediaMessage(m);
-                if (!imageBuffer) return await nimesha.sendMessage(m.chat, { text: `⚠️ Image reply කරන්න!\n${botFooter}` }, { quoted: m });
+                if (!imageBuffer) return await sendAutoDelete(nimesha, m.chat, `⚠️ Image reply කරන්න!`, botFooter, { quoted: m });
                 const sharp = require('sharp');
                 const blurred = await sharp(imageBuffer).blur(15).toBuffer();
                 await nimesha.sendMessage(m.chat, { image: blurred, caption: `🌫️ *Blurred Image*\n${botFooter}` }, { quoted: m });
@@ -967,13 +1147,13 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
                 const imgBuffer = await tryFetch([
                     async () => { const r = await axios.get(`https://api.paxsenix.biz.id/filter/blur?image=${encodeURIComponent('https://i.imgur.com/test.jpg')}`, { responseType: 'arraybuffer', timeout: 15000 }); return Buffer.from(r.data); }
                 ]);
-                await nimesha.sendMessage(m.chat, { text: `❌ Blur error: ${e.message}\n${botFooter}` }, { quoted: m });
+                await sendAutoDelete(nimesha, m.chat, `❌ Blur error: ${e.message}`, botFooter, { quoted: m });
             }
         }
 
         // .attp (animated text sticker) — ffmpeg local render + API fallback
         else if (cmd === 'attp') {
-            if (!q) return await nimesha.sendMessage(m.chat, { text: `⚠️ Text ඇතුළත් කරන්න!\nඋදා: ${prefix}attp Hello\n${botFooter}` }, { quoted: m });
+            if (!q) return await sendAutoDelete(nimesha, m.chat, `⚠️ Text ඇතුළත් කරන්න!\nඋදා: ${prefix}attp Hello`, botFooter, { quoted: m });
             const atttpWaitMsg = await nimesha.sendMessage(m.chat, { text: `🎨 *ATTP Sticker Generate කරමින්...*\n📝 *Text:* ${q}\n⏳ රැඳෙන්න...\n${botFooter}` }, { quoted: m });
             try {
                 // ffmpeg local render — බ්ලින්ක් animation සහිතව (රතු, නිල්, කොළ)
@@ -1001,13 +1181,14 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
                     ff.on('error', reject);
                     ff.on('close', code => code === 0 ? resolve(Buffer.concat(chunks)) : reject(new Error(Buffer.concat(errors).toString())));
                 });
-                const { videoToWebp } = require('./lib/exif');
-                const webpBuffer = await videoToWebp(mp4Buffer);
+                // mp4 → animated webp convert කරනවා
+                const { writeExif } = require('./lib/exif');
+                const webpBuffer = await writeExif(mp4Buffer, { packname: 'Miss Shasikala', author: 'Nimesha' });
                 try { await nimesha.sendMessage(m.chat, { delete: atttpWaitMsg.key }); } catch(e) {}
                 await nimesha.sendMessage(m.chat, { sticker: webpBuffer }, { quoted: m });
             } catch (ffErr) {
-                // ffmpeg fail — API fallback
-                console.log('ATTP ffmpeg error, API fallback:', ffErr.message);
+                // ffmpeg/convert fail — API fallback
+                console.log('ATTP error, API fallback:', ffErr.message);
                 const imgBuffer = await tryFetch([
                     async () => { const r = await axios.get(`https://api.paxsenix.biz.id/sticker/attp?text=${encodeURIComponent(q)}`, { responseType: 'arraybuffer', timeout: 15000 }); return Buffer.from(r.data); },
                     async () => { const r = await axios.get(`https://api.lolhuman.xyz/api/attp?apikey=demo&text=${encodeURIComponent(q)}`, { responseType: 'arraybuffer', timeout: 15000 }); return Buffer.from(r.data); }
@@ -1016,7 +1197,8 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
                     try { await nimesha.sendMessage(m.chat, { delete: atttpWaitMsg.key }); } catch(e) {}
                     await nimesha.sendMessage(m.chat, { sticker: imgBuffer }, { quoted: m });
                 } else {
-                    await nimesha.sendMessage(m.chat, { text: `❌ ATTP generate කිරීමට නොහැකිය\n${botFooter}`, edit: atttpWaitMsg.key });
+                    // සියල්ල fail — error edit
+                    await editAutoDelete(nimesha, m.chat, `❌ ATTP generate කිරීමට නොහැකිය`, botFooter, atttpWaitMsg.key);
                 }
             }
         }
@@ -1025,7 +1207,7 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
         // ════════ TEXT MAKER / ART COMMANDS ══════════════════
         // ══════════════════════════════════════════════════════
         else if (['metallic', 'ice', 'snow', 'impressive', 'matrix', 'light', 'neon', 'devil', 'purple', 'thunder', 'leaves', '1917', 'arena', 'hacker', 'sand', 'blackpink', 'glitch', 'fire'].includes(cmd)) {
-            if (!q) return await nimesha.sendMessage(m.chat, { text: `⚠️ Text ඇතුළත් කරන්න!\nඋදා: ${prefix}${cmd} Hello\n${botFooter}` }, { quoted: m });
+            if (!q) return await sendAutoDelete(nimesha, m.chat, `⚠️ Text ඇතුළත් කරන්න!\nඋදා: ${prefix}${cmd} Hello`, botFooter, { quoted: m });
             const waitMsg = await nimesha.sendMessage(m.chat, { text: `🎨 *Text Art Generate කරමින්...*\n✨ *Style:* ${cmd}\n📝 *Text:* ${q}\n⏳ රැඳෙන්න...\n${botFooter}` }, { quoted: m });
             const imgBuffer = await tryFetch([
                 async () => { const r = await axios.get(`https://api.paxsenix.biz.id/text-effect/${cmd}?text=${encodeURIComponent(q)}`, { responseType: 'arraybuffer', timeout: 20000 }); return Buffer.from(r.data); },
@@ -1063,7 +1245,7 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
         else if (cmd === 'flirt') {
             const flirts = ['Are you a magician? Every time I look at you, everyone else disappears ✨', 'Do you have a map? I keep getting lost in your eyes 👀', 'Are you a parking ticket? Because you have "fine" written all over you 😍', 'Is your name Google? Because you have everything I\'ve been searching for 🔍'];
             const flirt = flirts[Math.floor(Math.random() * flirts.length)];
-            await nimesha.sendMessage(m.chat, { text: `💕 *Flirt Line*\n━━━━━━━━━━━━━━━━━━━━━━\n${flirt}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` }, { quoted: m });
+            await sendAutoDelete(nimesha, m.chat, `💕 *Flirt Line*\n━━━━━━━━━━━━━━━━━━━━━━\n${flirt}\n━━━━━━━━━━━━━━━━━━━━━━`, botFooter, { quoted: m });
         }
 
         // .hack
@@ -1092,7 +1274,7 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
                     if (imgBuffer) return await nimesha.sendMessage(m.chat, { image: imgBuffer, caption: `💀 *WASTED*\n@${mentioned.split('@')[0]}\n${botFooter}`, mentions: [mentioned] }, { quoted: m });
                 }
                 await nimesha.sendMessage(m.chat, { text: `💀 *WASTED*\n@${mentioned.split('@')[0]}\n${botFooter}`, mentions: [mentioned] }, { quoted: m });
-            } catch (e) { await nimesha.sendMessage(m.chat, { text: `❌ Error: ${e.message}\n${botFooter}` }, { quoted: m }); }
+            } catch (e) { await sendAutoDelete(nimesha, m.chat, `❌ Error: ${e.message}`, botFooter, { quoted: m }); }
         }
 
         // .ship @user
@@ -1130,18 +1312,18 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
                 'Pyar ko pyar hi rehne do,\nKoi naam na do,\nJo rishta dil se bana hai,\nUse alfazon ki zaroorat kya. 💕'
             ];
             const shayari = shayaris[Math.floor(Math.random() * shayaris.length)];
-            await nimesha.sendMessage(m.chat, { text: `🌹 *Shayari*\n━━━━━━━━━━━━━━━━━━━━━━\n${shayari}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` }, { quoted: m });
+            await sendAutoDelete(nimesha, m.chat, `🌹 *Shayari*\n━━━━━━━━━━━━━━━━━━━━━━\n${shayari}\n━━━━━━━━━━━━━━━━━━━━━━`, botFooter, { quoted: m });
         }
 
         // .goodnight
         else if (cmd === 'goodnight') {
             const gns = ['🌙 Good night! Sweet dreams! 💭', '🌛 Sleep well! The stars will watch over you! ⭐', '🌜 May your dreams be magical tonight! ✨', '🌚 Rest well, tomorrow is a new day! 🌅'];
-            await nimesha.sendMessage(m.chat, { text: `🌙 *Good Night!*\n━━━━━━━━━━━━━━━━━━━━━━\n${gns[Math.floor(Math.random() * gns.length)]}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` }, { quoted: m });
+            await sendAutoDelete(nimesha, m.chat, `🌙 *Good Night!*\n━━━━━━━━━━━━━━━━━━━━━━\n${gns[Math.floor(Math.random() * gns.length)]}\n━━━━━━━━━━━━━━━━━━━━━━`, botFooter, { quoted: m });
         }
 
         // .roseday
         else if (cmd === 'roseday') {
-            await nimesha.sendMessage(m.chat, { text: `🌹 *Happy Rose Day!*\n━━━━━━━━━━━━━━━━━━━━━━\n🌹🌹🌹🌹🌹\n\nRoses are red,\nViolets are blue,\nThis bot is amazing,\nAnd so are you! 💕\n\n🌹🌹🌹🌹🌹\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` }, { quoted: m });
+            await sendAutoDelete(nimesha, m.chat, `🌹 *Happy Rose Day!*\n━━━━━━━━━━━━━━━━━━━━━━\n🌹🌹🌹🌹🌹\n\nRoses are red,\nViolets are blue,\nThis bot is amazing,\nAnd so are you! 💕\n\n🌹🌹🌹🌹🌹\n━━━━━━━━━━━━━━━━━━━━━━`, botFooter, { quoted: m });
         }
 
         // .stupid @user
@@ -1161,8 +1343,8 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
                 if (r) {
                     const isGif = gifUrl.endsWith('.gif') || r.headers['content-type']?.includes('gif');
                     await nimesha.sendMessage(m.chat, { [isGif ? 'video' : 'image']: Buffer.from(r.data), gifPlayback: isGif, caption: `🌸 *${cmd.toUpperCase()}*\n${botFooter}` }, { quoted: m });
-                } else await nimesha.sendMessage(m.chat, { text: `🌸 *${cmd.toUpperCase()}*\n🔗 ${gifUrl}\n${botFooter}` }, { quoted: m });
-            } else await nimesha.sendMessage(m.chat, { text: `❌ ${cmd} GIF ලබා ගැනීමට නොහැකිය\n${botFooter}` }, { quoted: m });
+                } else await sendAutoDelete(nimesha, m.chat, `🌸 *${cmd.toUpperCase()}*\n🔗 ${gifUrl}`, botFooter, { quoted: m });
+            } else await sendAutoDelete(nimesha, m.chat, `❌ ${cmd} GIF ලබා ගැනීමට නොහැකිය`, botFooter, { quoted: m });
         }
 
         // ══════════════════════════════════════════════════════
@@ -1171,28 +1353,28 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
 
         // .oogway <quote>
         else if (cmd === 'oogway') {
-            if (!q) return await nimesha.sendMessage(m.chat, { text: `⚠️ Quote ඇතුළත් කරන්න!\nඋදා: ${prefix}oogway Yesterday is history\n${botFooter}` }, { quoted: m });
+            if (!q) return await sendAutoDelete(nimesha, m.chat, `⚠️ Quote ඇතුළත් කරන්න!\nඋදා: ${prefix}oogway Yesterday is history`, botFooter, { quoted: m });
             const imgBuffer = await getMiscImage('oogway', { text: q });
             if (imgBuffer) await nimesha.sendMessage(m.chat, { image: imgBuffer, caption: `🐢 *Oogway says:*\n"${q}"\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` }, { quoted: m });
-            else await nimesha.sendMessage(m.chat, { text: `🐢 *Oogway says:*\n"${q}"\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` }, { quoted: m });
+            else await sendAutoDelete(nimesha, m.chat, `🐢 *Oogway says:*\n"${q}"\n━━━━━━━━━━━━━━━━━━━━━━`, botFooter, { quoted: m });
         }
 
         // .tweet <text>
         else if (cmd === 'tweet') {
-            if (!q) return await nimesha.sendMessage(m.chat, { text: `⚠️ Tweet text ඇතුළත් කරන්න!\nඋදා: ${prefix}tweet Hello World!\n${botFooter}` }, { quoted: m });
+            if (!q) return await sendAutoDelete(nimesha, m.chat, `⚠️ Tweet text ඇතුළත් කරන්න!\nඋදා: ${prefix}tweet Hello World!`, botFooter, { quoted: m });
             const username = m.pushName || 'User';
             const imgBuffer = await getMiscImage('tweet', { text: q, username });
             if (imgBuffer) await nimesha.sendMessage(m.chat, { image: imgBuffer, caption: `🐦 *Tweet*\n@${username}: ${q}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` }, { quoted: m });
-            else await nimesha.sendMessage(m.chat, { text: `🐦 *@${username}:* ${q}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` }, { quoted: m });
+            else await sendAutoDelete(nimesha, m.chat, `🐦 *@${username}:* ${q}\n━━━━━━━━━━━━━━━━━━━━━━`, botFooter, { quoted: m });
         }
 
         // .ytcomment <text>
         else if (cmd === 'ytcomment') {
-            if (!q) return await nimesha.sendMessage(m.chat, { text: `⚠️ Comment text ඇතුළත් කරන්න!\nඋදා: ${prefix}ytcomment This video is amazing!\n${botFooter}` }, { quoted: m });
+            if (!q) return await sendAutoDelete(nimesha, m.chat, `⚠️ Comment text ඇතුළත් කරන්න!\nඋදා: ${prefix}ytcomment This video is amazing!`, botFooter, { quoted: m });
             const username = m.pushName || 'User';
             const imgBuffer = await getMiscImage('ytcomment', { text: q, username });
             if (imgBuffer) await nimesha.sendMessage(m.chat, { image: imgBuffer, caption: `💬 *YouTube Comment*\n${username}: ${q}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` }, { quoted: m });
-            else await nimesha.sendMessage(m.chat, { text: `💬 *YouTube Comment*\n👤 ${username}: ${q}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` }, { quoted: m });
+            else await sendAutoDelete(nimesha, m.chat, `💬 *YouTube Comment*\n👤 ${username}: ${q}\n━━━━━━━━━━━━━━━━━━━━━━`, botFooter, { quoted: m });
         }
 
         // .jail @user
@@ -1205,7 +1387,7 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
                     if (imgBuffer) return await nimesha.sendMessage(m.chat, { image: imgBuffer, caption: `🚔 *JAILED!*\n@${mentioned.split('@')[0]}\n${botFooter}`, mentions: [mentioned] }, { quoted: m });
                 }
                 await nimesha.sendMessage(m.chat, { text: `🚔 *@${mentioned.split('@')[0]} is now in JAIL!*\n${botFooter}`, mentions: [mentioned] }, { quoted: m });
-            } catch (e) { await nimesha.sendMessage(m.chat, { text: `❌ Error: ${e.message}\n${botFooter}` }, { quoted: m }); }
+            } catch (e) { await sendAutoDelete(nimesha, m.chat, `❌ Error: ${e.message}`, botFooter, { quoted: m }); }
         }
 
         // .triggered @user
@@ -1218,7 +1400,7 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
                     if (imgBuffer) return await nimesha.sendMessage(m.chat, { video: imgBuffer, gifPlayback: true, caption: `😤 *TRIGGERED!*\n@${mentioned.split('@')[0]}\n${botFooter}`, mentions: [mentioned] }, { quoted: m });
                 }
                 await nimesha.sendMessage(m.chat, { text: `😤 *@${mentioned.split('@')[0]} is TRIGGERED!*\n${botFooter}`, mentions: [mentioned] }, { quoted: m });
-            } catch (e) { await nimesha.sendMessage(m.chat, { text: `❌ Error: ${e.message}\n${botFooter}` }, { quoted: m }); }
+            } catch (e) { await sendAutoDelete(nimesha, m.chat, `❌ Error: ${e.message}`, botFooter, { quoted: m }); }
         }
 
         // .namecard
@@ -1226,7 +1408,7 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
             const name = m.pushName || q || 'User';
             const imgBuffer = await getMiscImage('namecard', { name, subtitle: `WhatsApp: ${m.sender.split('@')[0]}` });
             if (imgBuffer) await nimesha.sendMessage(m.chat, { image: imgBuffer, caption: `🪪 *Name Card*\n👤 ${name}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` }, { quoted: m });
-            else await nimesha.sendMessage(m.chat, { text: `🪪 *Name Card*\n👤 *Name:* ${name}\n📱 *Number:* +${m.sender.split('@')[0]}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` }, { quoted: m });
+            else await sendAutoDelete(nimesha, m.chat, `🪪 *Name Card*\n👤 *Name:* ${name}\n📱 *Number:* +${m.sender.split('@')[0]}\n━━━━━━━━━━━━━━━━━━━━━━`, botFooter, { quoted: m });
         }
 
         // .heart / .circle / .lgbt / .horny / .lolice / .gay / .glass / .passed
@@ -1243,7 +1425,7 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
                     if (imgBuffer) return await nimesha.sendMessage(m.chat, { image: imgBuffer, caption: `${emojiMap[cmd]} *${cmd.toUpperCase()}*\n@${mentioned.split('@')[0]}\n${botFooter}`, mentions: [mentioned] }, { quoted: m });
                 }
                 await nimesha.sendMessage(m.chat, { text: `${emojiMap[cmd]} *${cmd.toUpperCase()}*\n@${mentioned.split('@')[0]}\n${botFooter}`, mentions: [mentioned] }, { quoted: m });
-            } catch (e) { await nimesha.sendMessage(m.chat, { text: `❌ Error: ${e.message}\n${botFooter}` }, { quoted: m }); }
+            } catch (e) { await sendAutoDelete(nimesha, m.chat, `❌ Error: ${e.message}`, botFooter, { quoted: m }); }
         }
 
         // .its-so-stupid / .comrade
@@ -1262,7 +1444,7 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
 
         // .apk <app name>
         else if (cmd === 'apk') {
-            if (!q) return await nimesha.sendMessage(m.chat, { text: `⚠️ App name ඇතුළත් කරන්න!\nඋදා: ${prefix}apk WhatsApp\n${botFooter}` }, { quoted: m });
+            if (!q) return await sendAutoDelete(nimesha, m.chat, `⚠️ App name ඇතුළත් කරන්න!\nඋදා: ${prefix}apk WhatsApp`, botFooter, { quoted: m });
             const waitMsg = await nimesha.sendMessage(m.chat, { text: `🔍 *APK සොයමින්...*\n📱 *App:* ${q}\n⏳ රැඳෙන්න...\n${botFooter}` }, { quoted: m });
             const apkInfo = await tryFetch([
                 async () => {
@@ -1322,7 +1504,7 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
                 const btnKey = btnMsg?.key || null;
 
                 pendingDownload.set(m.sender, { type: 'song', input, url: videoUrl, displayTitle, statusKey: searchKey, buttonKey: btnKey });
-            } catch (err) { await nimesha.sendMessage(m.chat, { text: `⚠️ *දෝෂයකි:* ${err.message}\n${botFooter}` }, { quoted: m }); }
+            } catch (err) { await sendAutoDelete(nimesha, m.chat, `⚠️ *දෝෂයකි:* ${err.message}`, botFooter, { quoted: m }); }
         }
 
         // .video / .mp4 / .ytmp4
@@ -1373,7 +1555,7 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
                 const vidBtnKey = vidBtnMsg?.key || null;
 
                 pendingDownload.set(m.sender, { type: 'video', input, url: videoUrl, displayTitle, statusKey: vidSearchKey, buttonKey: vidBtnKey });
-            } catch (err) { await nimesha.sendMessage(m.chat, { text: `⚠️ *දෝෂයකි:* ${err.message}\n${botFooter}` }, { quoted: m }); }
+            } catch (err) { await sendAutoDelete(nimesha, m.chat, `⚠️ *දෝෂයකි:* ${err.message}`, botFooter, { quoted: m }); }
         }
 
         // ══════════════════════════════════════════════════════
