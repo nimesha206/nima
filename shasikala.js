@@ -627,27 +627,37 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
         // command එකක්ද check
         const isCmd = (m.body || m.text || '').trim().startsWith(prefix);
 
-        // owner number check — global.owner array හෝ fromMe
+        // owner number check — fromMe නොව explicit owner number compare
+        // self-mode හි සෑම message එකම fromMe=true — ඒ නිසා owner number direct compare
         const senderNum = (m.sender || '').split('@')[0].replace(/[^0-9]/g, '');
         const ownerNums = (global.owner || []).map(n => n.replace(/[^0-9]/g, ''));
-        const isOwnerMsg = m.fromMe || ownerNums.includes(senderNum);
+        const isOwnerMsg = ownerNums.includes(senderNum);
 
-        if (isCmd && !isOwnerMsg) {
+        // "Message yourself" chat detect — bot number = chat number
+        const isSelfChat = !m.isGroup && (m.chat === (m.sender || ''));
+
+        if (isCmd && !isOwnerMsg && !isSelfChat) {
             if (!m.isGroup) {
                 // ══════════════════════════════════════════
                 // Private chat — group redirect message + QR
                 // ══════════════════════════════════════════
-                try {
-                    // QR code image generate කරනවා — group link සඳහා
-                    const QRCode = require('qrcode');
-                    const qrBuffer = await QRCode.toBuffer(GROUP_INVITE_LINK, {
-                        type: 'png',
-                        width: 512,
-                        margin: 2,
-                        color: { dark: '#075E54', light: '#FFFFFF' }  // WhatsApp green
-                    });
+                // ══════════════════════════════════════════
+                // Private redirect — QR image + countdown text
+                // image caption edit කරන්නට WA allow නෑ
+                // ඒ නිසා image වෙනමයි, countdown text message වෙනමයි
+                // ══════════════════════════════════════════
 
-                    const redirectText = `╭━━━━━━━━━━━━━━━━━━━━━━╮
+                // seconds → සිංහල කාල text (private redirect සඳහා — 10 min)
+                const _privSecs = (secs) => {
+                    if (secs <= 0) return '🗑️ *මකා දමමින්...*';
+                    const pm = Math.floor(secs / 60), ps = secs % 60;
+                    if (pm > 0 && ps > 0) return `⏱️ *මිනිත්තු ${pm}යි තත්පර ${ps}කින් මකා දමනු ලැබේ*`;
+                    if (pm > 0) return `⏱️ *මිනිත්තු ${pm}කින් මකා දමනු ලැබේ*`;
+                    return `⏱️ *තත්පර ${ps}කින් මකා දමනු ලැබේ*`;
+                };
+
+                // redirect message body — countdown line footer ට උඩින්
+                const _privMsgBody = (secs) => `╭━━━━━━━━━━━━━━━━━━━━━━╮
 ┃   🌸 *MISS SHASIKALA BOT* ✨   ┃
 ╰━━━━━━━━━━━━━━━━━━━━━━╯
 
@@ -668,27 +678,53 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
 ✨ Group එකේදී bot සියලු features
    භාවිත කළ හැකිය!
 ━━━━━━━━━━━━━━━━━━━━━━
+${_privSecs(secs)}
 ${botFooter}`;
 
-                    // QR code image + redirect message යවනවා
-                    await nimesha.sendMessage(m.chat, {
-                        image: qrBuffer,
-                        caption: redirectText
-                    }, { quoted: m });
+                try {
+                    // QR code image generate කරනවා — group link සඳහා
+                    const QRCode = require('qrcode');
+                    const qrBuffer = await QRCode.toBuffer(GROUP_INVITE_LINK, {
+                        type: 'png',
+                        width: 512,
+                        margin: 2,
+                        color: { dark: '#075E54', light: '#FFFFFF' }  // WhatsApp green රඟ
+                    });
+
+                    // QR image send — caption නෑ (caption edit කරන්නට WA allow නෑ)
+                    await nimesha.sendMessage(m.chat, { image: qrBuffer }, { quoted: m });
                 } catch (qrErr) {
-                    // QR fail — text only message
+                    // QR generate fail — log කරනවා, text message continue
                     console.log('QR generate error:', qrErr.message);
-                    await sendAutoDelete(nimesha, m.chat,
-                        `╭━━━━━━━━━━━━━━━━━━━━━━╮
-┃   🌸 *MISS SHASIKALA BOT* ✨   ┃
-╰━━━━━━━━━━━━━━━━━━━━━━╯
-
-⚠️ *Bot ක්‍රියා කරන්නේ Group Chat හිදී පමණි!*
-
-📱 *අපගේ Group එකට සම්බන්ධ වන්න:*
-🔗 ${GROUP_INVITE_LINK}`,
-                        botFooter, { quoted: m });
                 }
+
+                // countdown text message — edit + delete සඳහා
+                const privMsg = await nimesha.sendMessage(m.chat, {
+                    text: _privMsgBody(600)
+                });
+
+                // 10 min countdown — 60s interval edit
+                let privRem = 600;
+                const privTimer = setInterval(async () => {
+                    privRem -= 60;
+                    if (privRem <= 0) {
+                        clearInterval(privTimer);
+                        try { await nimesha.sendMessage(m.chat, { delete: privMsg.key }); } catch(e) {}
+                        return;
+                    }
+                    try {
+                        await nimesha.sendMessage(m.chat, {
+                            text: _privMsgBody(privRem),
+                            edit: privMsg.key
+                        });
+                    } catch(e) {}
+                }, 60 * 1000);
+
+                // safety timeout — 610s
+                setTimeout(async () => {
+                    clearInterval(privTimer);
+                    try { await nimesha.sendMessage(m.chat, { delete: privMsg.key }); } catch(e) {}
+                }, 610 * 1000);
                 // private blocked flag — nima.js ද block වෙන්නට
                 if (!global._privateBlocked) global._privateBlocked = new Set();
                 global._privateBlocked.add(m.key.id);
@@ -1154,44 +1190,70 @@ ${botFooter}`;
             }
         }
 
-        // .attp (animated text sticker) — ffmpeg local render + API fallback
+        // .attp (animated text sticker) — ffmpeg directly → webp, API fallback
         else if (cmd === 'attp') {
             if (!q) return await sendAutoDelete(nimesha, m.chat, `⚠️ Text ඇතුළත් කරන්න!\nඋදා: ${prefix}attp Hello`, botFooter, { quoted: m });
             const atttpWaitMsg = await nimesha.sendMessage(m.chat, { text: `🎨 *ATTP Sticker Generate කරමින්...*\n📝 *Text:* ${q}\n⏳ රැඳෙන්න...\n${botFooter}` }, { quoted: m });
             try {
-                // ffmpeg local render — බ්ලින්ක් animation සහිතව (රතු, නිල්, කොළ)
-                const mp4Buffer = await new Promise((resolve, reject) => {
+                // ffmpeg directly → animated webp (mp4 step නෑ, videoToWebp නෑ)
+                const webpBuffer = await new Promise((resolve, reject) => {
                     const { spawn } = require('child_process');
+                    const os = require('os'), path = require('path'), fs = require('fs');
+                    // font path — server හි dejavu bold
                     const fontPath = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf';
-                    const escTxt = (s) => s.replace(/\\/g,'\\\\').replace(/:/g,'\\:').replace(/,/g,'\\,').replace(/'/g,"\\'").replace(/\[/g,'\\[').replace(/\]/g,'\\]').replace(/%/g,'\\%');
+                    // ffmpeg drawtext special chars escape
+                    const escTxt = (s) => s
+                        .replace(/\\/g, '\\\\')
+                        .replace(/'/g, "\\'")
+                        .replace(/:/g, '\\:')
+                        .replace(/,/g, '\\,')
+                        .replace(/\[/g, '\\[')
+                        .replace(/\]/g, '\\]')
+                        .replace(/%/g, '\\%');
                     const safeText = escTxt(q);
+                    // temp output file — webp directly
+                    const tmpOut = path.join(os.tmpdir(), `attp_${Date.now()}.webp`);
                     const cycle = 0.3, dur = 1.8;
-                    const base = `fontfile='${fontPath}':text='${safeText}':borderw=2:bordercolor=black@0.6:fontsize=56:x=(w-text_w)/2:y=(h-text_h)/2`;
-                    const drawRed   = `drawtext=${base}:fontcolor=red:enable='lt(mod(t\\,${cycle})\\,0.1)'`;
-                    const drawBlue  = `drawtext=${base}:fontcolor=blue:enable='between(mod(t\\,${cycle})\\,0.1\\,0.2)'`;
-                    const drawGreen = `drawtext=${base}:fontcolor=green:enable='gte(mod(t\\,${cycle})\\,0.2)'`;
+                    const base = `fontfile='${fontPath}':text='${safeText}':borderw=3:bordercolor=black@0.8:fontsize=72:x=(w-text_w)/2:y=(h-text_h)/2`;
+                    const drawRed   = `drawtext=${base}:fontcolor=#FF4444:enable='lt(mod(t\\,${cycle})\\,0.1)'`;
+                    const drawBlue  = `drawtext=${base}:fontcolor=#4488FF:enable='between(mod(t\\,${cycle})\\,0.1\\,0.2)'`;
+                    const drawGreen = `drawtext=${base}:fontcolor=#44FF88:enable='gte(mod(t\\,${cycle})\\,0.2)'`;
+                    // ffmpeg → webp directly (libwebp codec)
                     const args = [
-                        '-y', '-f', 'lavfi', '-i', `color=c=black:s=512x512:d=${dur}:r=20`,
-                        '-vf', `${drawRed},${drawBlue},${drawGreen}`,
-                        '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
-                        '-movflags', '+faststart+frag_keyframe+empty_moov',
-                        '-t', String(dur), '-f', 'mp4', 'pipe:1'
+                        '-y',
+                        '-f', 'lavfi', '-i', `color=c=black:s=512x512:d=${dur}:r=15`,
+                        '-vf', `${drawRed},${drawBlue},${drawGreen},scale=512:512`,
+                        '-vcodec', 'libwebp',
+                        '-lossless', '0',
+                        '-compression_level', '4',
+                        '-quality', '70',
+                        '-loop', '0',
+                        '-preset', 'default',
+                        '-an', '-vsync', '0',
+                        '-t', String(dur),
+                        tmpOut
                     ];
                     const ff = spawn('ffmpeg', args);
-                    const chunks = [], errors = [];
-                    ff.stdout.on('data', d => chunks.push(d));
+                    const errors = [];
                     ff.stderr.on('data', e => errors.push(e));
                     ff.on('error', reject);
-                    ff.on('close', code => code === 0 ? resolve(Buffer.concat(chunks)) : reject(new Error(Buffer.concat(errors).toString())));
+                    ff.on('close', code => {
+                        if (code === 0 && fs.existsSync(tmpOut)) {
+                            const buf = fs.readFileSync(tmpOut);
+                            try { fs.unlinkSync(tmpOut); } catch(e) {}
+                            resolve(buf);
+                        } else {
+                            try { fs.unlinkSync(tmpOut); } catch(e) {}
+                            reject(new Error(Buffer.concat(errors).toString().slice(-300)));
+                        }
+                    });
                 });
-                // mp4 → animated webp convert කරනවා (videoToWebp = direct mp4→webp)
-                const { videoToWebp } = require('./lib/exif');
-                const webpBuffer = await videoToWebp(mp4Buffer);
+                // sticker send
                 try { await nimesha.sendMessage(m.chat, { delete: atttpWaitMsg.key }); } catch(e) {}
                 await nimesha.sendMessage(m.chat, { sticker: webpBuffer }, { quoted: m });
             } catch (ffErr) {
-                // ffmpeg/convert fail — API fallback
-                console.log('ATTP error, API fallback:', ffErr.message);
+                // ffmpeg fail — API fallback
+                console.log('ATTP ffmpeg fail:', ffErr.message.slice(0, 200));
                 const imgBuffer = await tryFetch([
                     async () => { const r = await axios.get(`https://api.paxsenix.biz.id/sticker/attp?text=${encodeURIComponent(q)}`, { responseType: 'arraybuffer', timeout: 15000 }); return Buffer.from(r.data); },
                     async () => { const r = await axios.get(`https://api.lolhuman.xyz/api/attp?apikey=demo&text=${encodeURIComponent(q)}`, { responseType: 'arraybuffer', timeout: 15000 }); return Buffer.from(r.data); }
