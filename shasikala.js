@@ -662,45 +662,50 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
 
         // .joke
         else if (cmd === 'joke') {
+            const jokeMsg = await nimesha.sendMessage(m.chat, { text: `😂 *Joke ගනිමින්...*\n⏳ රැඳෙන්න...\n${botFooter}` }, { quoted: m });
             const joke = await tryFetch([
                 async () => { const r = await axios.get('https://v2.jokeapi.dev/joke/Any?type=twopart&blacklistFlags=nsfw,racist,sexist', { timeout: 8000 }); return r.data?.setup ? `😂 *${r.data.setup}*\n\n${r.data.delivery}` : null; },
                 async () => { const r = await axios.get('https://official-joke-api.appspot.com/jokes/random', { timeout: 8000 }); return r.data?.setup ? `😂 *${r.data.setup}*\n\n${r.data.punchline}` : null; }
             ]);
-            await nimesha.sendMessage(m.chat, { text: joke ? `${joke}\n\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` : `❌ Joke ලබා ගැනීමට නොහැකිය\n${botFooter}` }, { quoted: m });
+            await nimesha.sendMessage(m.chat, { text: joke ? `${joke}\n\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` : `❌ Joke ලබා ගැනීමට නොහැකිය\n${botFooter}`, edit: jokeMsg.key });
         }
 
         // .quote
         else if (cmd === 'quote') {
+            const quoteMsg = await nimesha.sendMessage(m.chat, { text: `💬 *Quote ගනිමින්...*\n⏳ රැඳෙන්න...\n${botFooter}` }, { quoted: m });
             const quote = await tryFetch([
                 async () => { const r = await axios.get('https://api.quotable.io/random', { timeout: 8000 }); return r.data?.content ? `💬 *"${r.data.content}"*\n\n— _${r.data.author}_` : null; },
                 async () => { const r = await axios.get('https://zenquotes.io/api/random', { timeout: 8000 }); return r.data?.[0]?.q ? `💬 *"${r.data[0].q}"*\n\n— _${r.data[0].a}_` : null; }
             ]);
-            await nimesha.sendMessage(m.chat, { text: quote ? `${quote}\n\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` : `❌ Quote ලබා ගැනීමට නොහැකිය\n${botFooter}` }, { quoted: m });
+            await nimesha.sendMessage(m.chat, { text: quote ? `${quote}\n\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` : `❌ Quote ලබා ගැනීමට නොහැකිය\n${botFooter}`, edit: quoteMsg.key });
         }
 
         // .fact
         else if (cmd === 'fact') {
+            const factMsg = await nimesha.sendMessage(m.chat, { text: `💡 *Fact ගනිමින්...*\n⏳ රැඳෙන්න...\n${botFooter}` }, { quoted: m });
             const fact = await tryFetch([
                 async () => { const r = await axios.get('https://uselessfacts.jsph.pl/random.json?language=en', { timeout: 8000 }); return r.data?.text || null; },
                 async () => { const r = await axios.get('https://api.api-ninjas.com/v1/facts?limit=1', { headers: { 'X-Api-Key': 'demo' }, timeout: 8000 }); return r.data?.[0]?.fact || null; },
                 async () => { const r = await axios.get('https://catfact.ninja/fact', { timeout: 8000 }); return r.data?.fact || null; }
             ]);
-            await nimesha.sendMessage(m.chat, { text: fact ? `💡 *Interesting Fact!*\n━━━━━━━━━━━━━━━━━━━━━━\n${fact}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` : `❌ Fact ලබා ගැනීමට නොහැකිය\n${botFooter}` }, { quoted: m });
+            await nimesha.sendMessage(m.chat, { text: fact ? `💡 *Interesting Fact!*\n━━━━━━━━━━━━━━━━━━━━━━\n${fact}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` : `❌ Fact ලබා ගැනීමට නොහැකිය\n${botFooter}`, edit: factMsg.key });
         }
 
         // .define <word>
         else if (cmd === 'define') {
             if (!q) return await nimesha.sendMessage(m.chat, { text: `⚠️ වචනයක් ඇතුළත් කරන්න!\nඋදා: ${prefix}define hello\n${botFooter}` }, { quoted: m });
+            const defineMsg = await nimesha.sendMessage(m.chat, { text: `📖 *"${q}" සොයමින්...*\n⏳ රැඳෙන්න...\n${botFooter}` }, { quoted: m });
             const def = await tryFetch([
                 async () => { const r = await axios.get(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(q)}`, { timeout: 8000 }); const d = r.data?.[0]; return d ? `📖 *${d.word}*\n\n*Meaning:* ${d.meanings?.[0]?.definitions?.[0]?.definition}\n*Example:* ${d.meanings?.[0]?.definitions?.[0]?.example || 'N/A'}\n*Part of speech:* ${d.meanings?.[0]?.partOfSpeech || 'N/A'}` : null; },
                 async () => { const r = await axios.get(`https://api.api-ninjas.com/v1/dictionary?word=${encodeURIComponent(q)}`, { headers: { 'X-Api-Key': 'demo' }, timeout: 8000 }); return r.data?.definition ? `📖 *${q}*\n\n${r.data.definition}` : null; }
             ]);
-            await nimesha.sendMessage(m.chat, { text: def ? `${def}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` : `❌ "${q}" වචනය හමු නොවිණී\n${botFooter}` }, { quoted: m });
+            await nimesha.sendMessage(m.chat, { text: def ? `${def}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` : `❌ "${q}" වචනය හමු නොවිණී\n${botFooter}`, edit: defineMsg.key });
         }
 
         // .weather <city>
         else if (cmd === 'weather') {
             if (!q) return await nimesha.sendMessage(m.chat, { text: `⚠️ නගරයේ නම ඇතුළත් කරන්න!\nඋදා: ${prefix}weather Colombo\n${botFooter}` }, { quoted: m });
+            const weatherMsg = await nimesha.sendMessage(m.chat, { text: `🌤️ *කාලගුණය සොයමින්...*\n⏳ රැඳෙන්න...\n${botFooter}` }, { quoted: m });
             const weather = await tryFetch([
                 async () => {
                     const r = await axios.get(`https://wttr.in/${encodeURIComponent(q)}?format=j1`, { timeout: 10000 });
@@ -713,21 +718,23 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
                     return r.data?.main ? `🌤️ *Weather: ${q}*\n━━━━━━━━━━━━━━━━━━━━━━\n🌡️ *Temp:* ${r.data.main.temp}°C\n💧 *Humidity:* ${r.data.main.humidity}%\n☁️ *Condition:* ${r.data.weather?.[0]?.description}` : null;
                 }
             ]);
-            await nimesha.sendMessage(m.chat, { text: weather ? `${weather}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` : `❌ "${q}" නගරය හමු නොවිණී\n${botFooter}` }, { quoted: m });
+            await nimesha.sendMessage(m.chat, { text: weather ? `${weather}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` : `❌ "${q}" නගරය හමු නොවිණී\n${botFooter}`, edit: weatherMsg.key });
         }
 
         // .news
         else if (cmd === 'news') {
+            const newsMsg = await nimesha.sendMessage(m.chat, { text: `📰 *News ගනිමින්...*\n⏳ රැඳෙන්න...\n${botFooter}` }, { quoted: m });
             const news = await tryFetch([
                 async () => { const r = await axios.get('https://newsapi.org/v2/top-headlines?country=us&apiKey=demo&pageSize=5', { timeout: 10000 }); return r.data?.articles?.slice(0, 5).map((a, i) => `${i + 1}. *${a.title}*\n   ${a.source?.name || ''}`).join('\n\n') || null; },
                 async () => { const r = await axios.get('https://api.currentsapi.services/v1/latest-news?apiKey=demo&language=en&page_size=5', { timeout: 10000 }); return r.data?.news?.slice(0, 5).map((a, i) => `${i + 1}. *${a.title}*`).join('\n\n') || null; }
             ]);
-            await nimesha.sendMessage(m.chat, { text: news ? `📰 *Latest News (2026/03/11)*\n━━━━━━━━━━━━━━━━━━━━━━\n${news}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` : `❌ News ලබා ගැනීමට නොහැකිය\n${botFooter}` }, { quoted: m });
+            await nimesha.sendMessage(m.chat, { text: news ? `📰 *Latest News (2026/03/11)*\n━━━━━━━━━━━━━━━━━━━━━━\n${news}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` : `❌ News ලබා ගැනීමට නොහැකිය\n${botFooter}`, edit: newsMsg.key });
         }
 
         // .lyrics <song>
         else if (cmd === 'lyrics') {
             if (!q) return await nimesha.sendMessage(m.chat, { text: `⚠️ ගීත නාමය ඇතුළත් කරන්න!\nඋදා: ${prefix}lyrics Shape of You\n${botFooter}` }, { quoted: m });
+            const lyricsMsg = await nimesha.sendMessage(m.chat, { text: `🎵 *Lyrics සොයමින්...*\n⏳ රැඳෙන්න...\n${botFooter}` }, { quoted: m });
             const lyrics = await tryFetch([
                 async () => { const r = await axios.get(`https://some-random-api.com/lyrics?title=${encodeURIComponent(q)}`, { timeout: 10000 }); return r.data?.lyrics ? `🎵 *${r.data.title}* — ${r.data.author}\n━━━━━━━━━━━━━━━━━━━━━━\n${r.data.lyrics.substring(0, 2000)}` : null; },
                 async () => {
@@ -738,15 +745,16 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
                     return lyr.data?.lyrics ? `🎵 *${song.title}* — ${song.artist.name}\n━━━━━━━━━━━━━━━━━━━━━━\n${lyr.data.lyrics.substring(0, 2000)}` : null;
                 }
             ]);
-            await nimesha.sendMessage(m.chat, { text: lyrics ? `${lyrics}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` : `❌ "${q}" ගීතයේ lyrics හමු නොවිණී\n${botFooter}` }, { quoted: m });
+            await nimesha.sendMessage(m.chat, { text: lyrics ? `${lyrics}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` : `❌ "${q}" ගීතයේ lyrics හමු නොවිණී\n${botFooter}`, edit: lyricsMsg.key });
         }
 
         // .8ball <question>
         else if (cmd === '8ball') {
             if (!q) return await nimesha.sendMessage(m.chat, { text: `⚠️ ප්‍රශ්නයක් ඇතුළත් කරන්න!\nඋදා: ${prefix}8ball Will I win?\n${botFooter}` }, { quoted: m });
+            const eightMsg = await nimesha.sendMessage(m.chat, { text: `🎱 *Magic 8-Ball...*\n⏳ රැඳෙන්න...\n${botFooter}` }, { quoted: m });
             const answers = ['✅ Yes', '❌ No', '🤔 Maybe', '💯 Definitely!', '🙅 No way', '⭐ Signs point to yes', '🔮 Concentrate and ask again', '🌟 Without a doubt', '😐 Cannot predict now', '🎯 Outlook good'];
             const answer = answers[Math.floor(Math.random() * answers.length)];
-            await nimesha.sendMessage(m.chat, { text: `🎱 *Magic 8-Ball*\n━━━━━━━━━━━━━━━━━━━━━━\n❓ *Question:* ${q}\n\n🔮 *Answer:* ${answer}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` }, { quoted: m });
+            await nimesha.sendMessage(m.chat, { text: `🎱 *Magic 8-Ball*\n━━━━━━━━━━━━━━━━━━━━━━\n❓ *Question:* ${q}\n\n🔮 *Answer:* ${answer}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}`, edit: eightMsg.key });
         }
 
         // .tts <text>
@@ -767,11 +775,12 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
         // .trt <text> <lang>
         else if (cmd === 'trt' || cmd === 'translate') {
             if (!q) return await nimesha.sendMessage(m.chat, { text: `⚠️ Text සහ language ඇතුළත් කරන්න!\nඋදා: ${prefix}trt Hello si\nඋදා: ${prefix}trt Ayubowan en\n${botFooter}` }, { quoted: m });
+            const trtMsg = await nimesha.sendMessage(m.chat, { text: `🌐 *පරිවර්තනය කරමින්...*\n⏳ රැඳෙන්න...\n${botFooter}` }, { quoted: m });
             const parts = args;
             const toLang = parts[parts.length - 1]?.length <= 5 ? parts.pop() : 'en';
             const toTranslate = parts.join(' ');
             const translated = await translateText(toTranslate, toLang);
-            await nimesha.sendMessage(m.chat, { text: translated ? `🌐 *Translation*\n━━━━━━━━━━━━━━━━━━━━━━\n📝 *Original:* ${toTranslate}\n🔤 *Translated (${toLang}):* ${translated}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` : `❌ Translation නොහැකිය\n${botFooter}` }, { quoted: m });
+            await nimesha.sendMessage(m.chat, { text: translated ? `🌐 *Translation*\n━━━━━━━━━━━━━━━━━━━━━━\n📝 *Original:* ${toTranslate}\n🔤 *Translated (${toLang}):* ${translated}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` : `❌ Translation නොහැකිය\n${botFooter}`, edit: trtMsg.key });
         }
 
         // .ss <link>
@@ -789,18 +798,20 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
 
         // .jid
         else if (cmd === 'jid') {
-            await nimesha.sendMessage(m.chat, { text: `📱 *JID Info*\n━━━━━━━━━━━━━━━━━━━━━━\n👤 *Your JID:* ${m.sender}\n💬 *Chat JID:* ${m.chat}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` }, { quoted: m });
+            const jidMsg = await nimesha.sendMessage(m.chat, { text: `📱 *JID ලබා ගනිමින්...*\n${botFooter}` }, { quoted: m });
+            await nimesha.sendMessage(m.chat, { text: `📱 *JID Info*\n━━━━━━━━━━━━━━━━━━━━━━\n👤 *Your JID:* ${m.sender}\n💬 *Chat JID:* ${m.chat}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}`, edit: jidMsg.key });
         }
 
         // .url <text>
         else if (cmd === 'url') {
             if (!q) return await nimesha.sendMessage(m.chat, { text: `⚠️ Text ඇතුළත් කරන්න!\nඋදා: ${prefix}url hello world\n${botFooter}` }, { quoted: m });
-            await nimesha.sendMessage(m.chat, { text: `🔗 *URL Encoded*\n━━━━━━━━━━━━━━━━━━━━━━\n📝 *Original:* ${q}\n🔤 *Encoded:* ${encodeURIComponent(q)}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` }, { quoted: m });
+            await nimesha.sendMessage(m.chat, { text: `🔗 *URL Encoded*\n━━━━━━━━━━━━━━━━━━━━━━\n📝 *Original:* ${q}\n🔤 *Encoded:* ${encodeURIComponent(q)}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}`, edit: urlMsg.key });
         }
 
         // .cinfo <country>
         else if (cmd === 'cinfo') {
             if (!q) return await nimesha.sendMessage(m.chat, { text: `⚠️ Country name ඇතුළත් කරන්න!\nඋදා: ${prefix}cinfo Sri Lanka\n${botFooter}` }, { quoted: m });
+            const cinfoMsg = await nimesha.sendMessage(m.chat, { text: `🌍 *රට සොයමින්...*\n⏳ රැඳෙන්න...\n${botFooter}` }, { quoted: m });
             const info = await tryFetch([
                 async () => {
                     const r = await axios.get(`https://restcountries.com/v3.1/name/${encodeURIComponent(q)}?fullText=false`, { timeout: 10000 });
@@ -809,7 +820,7 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
                     return `🌍 *Country Info: ${c.name?.common}*\n━━━━━━━━━━━━━━━━━━━━━━\n🏳️ *Official:* ${c.name?.official}\n🗺️ *Capital:* ${c.capital?.[0] || 'N/A'}\n🌏 *Region:* ${c.region} - ${c.subregion}\n👥 *Population:* ${c.population?.toLocaleString()}\n💱 *Currency:* ${Object.values(c.currencies || {})[0]?.name || 'N/A'}\n🗣️ *Languages:* ${Object.values(c.languages || {}).join(', ')}\n📞 *Calling Code:* +${c.idd?.root?.replace('+', '')}${c.idd?.suffixes?.[0] || ''}\n🚗 *Driving Side:* ${c.car?.side || 'N/A'}\n🏖️ *Area:* ${c.area?.toLocaleString()} km²`;
                 }
             ]);
-            await nimesha.sendMessage(m.chat, { text: info ? `${info}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` : `❌ "${q}" රට හමු නොවිණී\n${botFooter}` }, { quoted: m });
+            await nimesha.sendMessage(m.chat, { text: info ? `${info}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}` : `❌ "${q}" රට හමු නොවිණී\n${botFooter}`, edit: cinfoMsg.key });
         }
 
         // .groupinfo

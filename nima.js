@@ -949,7 +949,8 @@ _ස්තූතියි!_ 🌸`).then(() => {
 			break
 			case 'listblock': {
 				let anu = await nimesha.fetchBlocklist()
-				m.reply(`Block සංඛ්‍යාව: ${anu.length}\n` + anu.map(v => '• ' + v.replace(/@.+/, '')).join`\n`)
+				const _msg_listblock = await m.reply('⏳ *සකසමින්...*');
+				await nimesha.sendMessage(m.chat, { text: `Block සංඛ්‍යාව: ${anu.length}\n` + anu.map(v => '• ' + v.replace(/@.+/, '')).join`\n`, edit: _msg_listblock.key });
 			}
 			break
 			case 'openblokir': case 'unblokir': case 'openblock': case 'unblock': {
@@ -1442,11 +1443,12 @@ _ස්තූතියි!_ 🌸`).then(() => {
 							sourceUrl: my.yt,
 						}
 					}
-				})
+				});
 			}
 			break
 			case 'donasi': case 'donate': {
-				m.reply('ආධාර කළ හැක්කේ මෙම URL හරහාය:\nhttps://saweria.co/nimesha206')
+				const _msg_donasi = await m.reply('⏳ 💰 *Donate info ලබා ගනිමින...*');
+				await nimesha.sendMessage(m.chat, { text: 'ආධාර කළ හැක්කේ මෙම URL හරහාය:\nhttps://saweria.co/nimesha206', edit: _msg_donasi.key });
 			}
 			break
 			
@@ -1731,7 +1733,8 @@ _ස්තූතියි!_ 🌸`).then(() => {
 			case 'profile': case 'cek': {
 				const user = Object.keys(db.users)
 				const infoUser = db.users[m.sender]
-				await m.reply(`*👤Profile @${m.sender.split('@')[0]}* :\n🐋Bot User: ${user.includes(m.sender) ? 'True' : 'False'}\n🔥User: ${isVip ? 'VIP' : isPremium ? 'PREMIUM' : 'FREE'}${isPremium ? `\n⏳Expired : ${checkStatus(m.sender, premium) ? formatDate(getExpired(m.sender, db.premium)) : '-'}` : ''}\n🎫Limit: ${infoUser.limit}\n💰මුදල්: ${infoUser ? infoUser.money.toLocaleString('id-ID') : '0'}`)
+				const _msg_profile = await m.reply('⏳ *සකසමින්...*');
+				await nimesha.sendMessage(m.chat, { text: `*👤Profile @${m.sender.split('@')[0]}* :\n🐋Bot User: ${user.includes(m.sender) ? 'True' : 'False'}\n🔥User: ${isVip ? 'VIP' : isPremium ? 'PREMIUM' : 'FREE'}${isPremium ? `\n⏳Expired : ${checkStatus(m.sender, premium) ? formatDate(getExpired(m.sender, db.premium)) : '-'}` : ''}\n🎫Limit: ${infoUser.limit}\n💰මුදල්: ${infoUser ? infoUser.money.toLocaleString('id-ID') : '0'}`, edit: _msg_profile.key });
 			}
 			break
 			case 'leaderboard': {
@@ -1740,7 +1743,8 @@ _ස්තූතියි!_ 🌸`).then(() => {
 				for (let i = 0; i < entries.length; i++) {
 					teksnya += `│• ${i + 1}. @${entries[i].split('@')[0]}\n│• Balance: ${db.users[entries[i]].money.toLocaleString('id-ID')}\n│\n`
 				}
-				m.reply(teksnya + '╰──────❍');
+				const _msg_leaderboard = await m.reply('⏳ 🏆 *Leaderboard ලබා ගනිමින්...*');
+				await nimesha.sendMessage(m.chat, { text: teksnya + '╰──────❍', edit: _msg_leaderboard.key });;
 			}
 			break
 			case 'totalpesan': {
@@ -1757,7 +1761,8 @@ _ස්තූතියි!_ 🌸`).then(() => {
 				let zeroMessageUsers = participants.filter(user => !messageCount[user]).map(user => `- @${user.replace(/[^0-9]/g, '')}`);
 				let messageList = Object.entries(messageCount).map(([sender, count], index) => `${index + 1}. @${sender.replace(/[^0-9]/g, '')}: ${count} පණිවිඩ`);
 				let result = `මුළු පණිවිඩ ${totalMessages} සිට ${participants.length} සාමාජිකයින්\nදිනට ${date}:\n${messageList.join('\n')}\n\nසටහන: ${text.length > 0 ? `\n${zeroMessageUsers.length > 0 ? `පණිවිඩ නොයැවූ සාමාජිකයින් (Sider):\n${zeroMessageUsers.join('\n')}` : 'Semua සාමාජිකයින් sudah mengirim pesan!'}` : `\nSider පරීක්ෂා? ${prefix + command} --sider`}`;
-				m.reply(result)
+				const _msg_totalpesan = await m.reply('⏳ 📊 *ගණන් කරමින්...*');
+				await nimesha.sendMessage(m.chat, { text: result, edit: _msg_totalpesan.key });
 			}
 			break
 			case 'req': case 'request': {
@@ -1768,7 +1773,8 @@ _ස්තූතියි!_ 🌸`).then(() => {
 			break
 			case 'totalfitur': {
 				const total = ((fs.readFileSync('./nima.js').toString()).match(/case '/g) || []).length
-				m.reply(`📊 *මුළු Commands:* ${total}`);
+				const _msg_totalfitur = await m.reply('⏳ 📋 *ගණන් කරමින්...*');
+				await nimesha.sendMessage(m.chat, { text: `📊 *මුළු Commands:* ${total}`, edit: _msg_totalfitur.key });;
 			}
 			break
 			case 'daily': case 'claim': {
@@ -1788,7 +1794,7 @@ _ස්තූතියි!_ 🌸`).then(() => {
 			}
 			break
 			case 'tagme': {
-				m.reply(`@${m.sender.split('@')[0]}`, { mentions: [m.sender] })
+				m.reply(`@${m.sender.split('@')[0]}`, {mentions: [m.sender]})
 			}
 			break
 			case 'runtime': case 'tes': case 'bot': {
@@ -1905,7 +1911,8 @@ _ස්තූතියි!_ 🌸`).then(() => {
 				let user = db.users[m.sender]
 				user.afkTime = + new Date
 				user.afkReason = text
-				m.reply(`💤 @${m.sender.split('@')[0]} AFK mode ON${text ? ' — _' + text + '_' : ''}`)
+				const _msg_afk = await m.reply('⏳ *සකසමින්...*');
+				await nimesha.sendMessage(m.chat, { text: `💤 @${m.sender.split('@')[0]} AFK mode ON${text ? ' — _' + text + '_' : ''}`, edit: _msg_afk.key });
 			}
 			break
 			case 'readviewonce': case 'readviewone': case 'rvo': {
@@ -2385,7 +2392,8 @@ _ස්තූතියි!_ 🌸`).then(() => {
 			case 'readmore': {
 				let teks1 = text.split`|`[0] ? text.split`|`[0] : ''
 				let teks2 = text.split`|`[1] ? text.split`|`[1] : ''
-				m.reply(teks1 + readmore + teks2)
+				const _msg_readmore = await m.reply('⏳ *සකසමින්...*');
+				await nimesha.sendMessage(m.chat, { text: teks1 + readmore + teks2, edit: _msg_readmore.key });
 			}
 			break
 			case 'getexif': {
@@ -2660,7 +2668,8 @@ _ස්තූතියි!_ 🌸`).then(() => {
 			}
 			break
 			case 'nulis': {
-				m.reply(`*උදාහරණ*\n${prefix}nuliskiri\n${prefix}nuliskanan\n${prefix}foliokiri\n${prefix}foliokanan`)
+				const _msg_nulis = await m.reply('⏳ *සකසමින්...*');
+				await nimesha.sendMessage(m.chat, { text: `*උදාහරණ*\n${prefix}nuliskiri\n${prefix}nuliskanan\n${prefix}foliokiri\n${prefix}foliokanan`, edit: _msg_nulis.key });
 			}
 			break
 			case 'nuliskanan': case 'nuliskiri': case 'foliokanan': case 'foliokiri': {
@@ -3205,49 +3214,44 @@ _ස්තූතියි!_ 🌸`).then(() => {
 			// Quotes Menu
 			case 'motivasi': {
 				const hasil = await fetchApi('/random/motivasi');
-				m.reply(hasil.result)
+				const _msg_bijak = await m.reply('⏳ 💡 *ලබා ගනිමින්...*');
+				await nimesha.sendMessage(m.chat, { text: hasil.result, edit: _msg_bijak.key });
 			}
 			break
 			case 'bijak': {
 				const hasil = await fetchApi('/random/bijak');
-				m.reply(hasil.result)
+				const _msg_dare = await m.reply('⏳ 🎯 *Dare ලබා ගනිමින්...*');
+				await nimesha.sendMessage(m.chat, { text: hasil.result, edit: _msg_dare.key });
 			}
 			break
 			case 'dare': {
 				const hasil = await fetchApi('/random/dare');
-				m.reply(hasil.result)
+				const _msg_bucin = await m.reply('⏳ 💕 *ලබා ගනිමින්...*');
+				await nimesha.sendMessage(m.chat, { text: hasil.result, edit: _msg_bucin.key });
 			}
 			break
 			case 'quotes': {
 				const { result: hasil } = await fetchApi('/random/quotes');
-				m.reply(`_${hasil.quotes}_\n\n*- ${hasil.author}*`)
+				const _msg_quotes = await m.reply('⏳ 💬 *Quote ලබා ගනිමින්...*');
+				await nimesha.sendMessage(m.chat, { text: `_${hasil.quotes}_\n\n*- ${hasil.author}*`, edit: _msg_quotes.key });
 			}
 			break
 			case 'truth': {
 				const hasil = await fetchApi('/random/truth');
-				m.reply(`_${pickRandom(hasil.result)}_`)
+				const _msg_truth = await m.reply('⏳ 🤔 *Truth ලබා ගනිමින්...*');
+				await nimesha.sendMessage(m.chat, { text: `_${pickRandom(hasil.result)}_`, edit: _msg_truth.key });
 			}
 			break
 			case 'renungan': {
 				const hasil = await fetchApi('/random/renungan');
-				m.reply('', {
-					contextInfo: {
-						forwardingScore: 10,
-						isForwarded: true,
-						externalAdReply: {
-							title: (m.pushName || 'Anonim'),
-							thumbnailUrl: hasil.result,
-							mediaType: 1,
-							previewType: 'PHOTO',
-							renderLargerThumbnail: true,
-						}
-					}
-				});
+				const _msg_renungan = await m.reply('⏳ *ලබා ගනිමින්...*');
+				await nimesha.sendMessage(m.chat, { text: hasil.result || '', contextInfo: { forwardingScore: 10, isForwarded: true, externalAdReply: { title: (m.pushName || 'Anonim'), thumbnailUrl: hasil.result, mediaType: 1, previewType: 'PHOTO', renderLargerThumbnail: true } }, edit: _msg_renungan.key });
 			}
 			break
 			case 'bucin': {
 				const hasil = await fetchApi('/random/bucin');
-				m.reply(hasil.result)
+				const _msg_bucin = await m.reply('⏳ *සකසමින්...*');
+				await nimesha.sendMessage(m.chat, { text: hasil.result, edit: _msg_bucin.key });
 			}
 			break
 			
@@ -3260,7 +3264,8 @@ _ස්තූතියි!_ 🌸`).then(() => {
 						const anu = await fetchJson('https://api.sampleapis.com/coffee/hot')
 						await nimesha.sendFileUrl(m.chat, pickRandom(anu).image, '☕ Random Coffe', m)
 					} catch (e) {
-						m.reply('Server offline!')
+						const _msg_kopi = await m.reply('⏳ *සකසමින්...*');
+				await nimesha.sendMessage(m.chat, { text: 'Server offline!', edit: _msg_kopi.key });
 					}
 				}
 			}
@@ -3360,7 +3365,8 @@ _ස්තූතියි!_ 🌸`).then(() => {
 			}
 			break
 			case 'rate': case 'nilai': {
-				m.reply(`🤖 Bot Rate: *${Math.floor(Math.random() * 100)}%*`)
+				const _msg_rate = await m.reply('⏳ ⭐ *Rate කරමින්...*');
+				await nimesha.sendMessage(m.chat, { text: `🤖 Bot Rate: *${Math.floor(Math.random() * 100)}%*`, edit: _msg_rate.key });
 			}
 			break
 			case 'jodohku': {
@@ -4415,7 +4421,8 @@ _ස්තූතියි!_ 🌸`).then(() => {
 			}
 			break
 			case 'botmenu': {
-				m.reply(`
+				const _msg_botmenu = await m.reply('⏳ *සකසමින්...*');
+				await nimesha.sendMessage(m.chat, { text: `
 ╭──❍「 *බොට් (BOT)* 」❍
 │${setv} ${prefix}profile (ගිණුම් විස්තර)
 │${setv} ${prefix}claim (දිනපතා ත්‍යාග)
@@ -4451,11 +4458,12 @@ _ස්තූතියි!_ 🌸`).then(() => {
 │${setv} ${prefix}addsewa (කුලී කාලය එකතු කිරීම)
 │${setv} ${prefix}delsewa (කුලී කාලය ඉවත් කිරීම)
 │${setv} ${prefix}listsewa (කුලී ලැයිස්තුව)
-╰──────❍`)
+╰──────❍`, edit: _msg_botmenu.key });
 			}
 			break
 			case 'groupmenu': {
-				m.reply(`
+				const _msg_groupmenu = await m.reply('⏳ *සකසමින්...*');
+				await nimesha.sendMessage(m.chat, { text: `
 ╭──❍「 *සමූහ (GROUP)* 」❍
 │${setv} ${prefix}add (සාමාජිකයින් එක් කිරීම)
 │${setv} ${prefix}kick (සාමාජිකයින් ඉවත් කිරීම)
@@ -4477,11 +4485,12 @@ _ස්තූතියි!_ 🌸`).then(() => {
 │${setv} ${prefix}listonline (සක්‍රීය අය බැලීම)
 │${setv} ${prefix}group set (සමූහ සැකසුම්)
 │${setv} ${prefix}group (පාලකයන්ට පමණි)
-╰──────❍`)
+╰──────❍`, edit: _msg_groupmenu.key });
 			}
 			break
 			case 'searchmenu': {
-				m.reply(`
+				const _msg_searchmenu = await m.reply('⏳ *සකසමින්...*');
+				await nimesha.sendMessage(m.chat, { text: `
 ╭──❍「 *සෙවුම් (SEARCH)* 」❍
 │${setv} ${prefix}ytsearch (YouTube සෙවීම්)
 │${setv} ${prefix}spotify (සංගීත සෙවීම්)
@@ -4503,11 +4512,12 @@ _ස්තූතියි!_ 🌸`).then(() => {
 │${setv} ${prefix}cinfo (රට ගැන තොරතුරු)
 │${setv} ${prefix}ss (වෙබ් Screenshots)
 │${setv} ${prefix}screenshot (වෙබ් Screenshots)
-╰──────❍`)
+╰──────❍`, edit: _msg_searchmenu.key });
 			}
 			break
 			case 'downloadmenu': {
-				m.reply(`
+				const _msg_downloadmenu = await m.reply('⏳ *සකසමින්...*');
+				await nimesha.sendMessage(m.chat, { text: `
 ╭──❍「 *බාගත කිරීම් (DOWNLOAD)* 」❍
 │${setv} ${prefix}mp3 (ගීතයේ නම / YouTube URL)
 │${setv} ${prefix}song (ගීතයේ නම / YouTube URL)
@@ -4523,11 +4533,12 @@ _ස්තූතියි!_ 🌸`).then(() => {
 │${setv} ${prefix}spotifydl (Spotify ගීත)
 │${setv} ${prefix}mediafire (Mediafire ගොනු)
 │${setv} ${prefix}apk (Android APK බාගත කිරීම)
-╰──────❍`)
+╰──────❍`, edit: _msg_downloadmenu.key });
 			}
 			break
 			case 'quotesmenu': {
-				m.reply(`
+				const _msg_quotesmenu = await m.reply('⏳ *සකසමින්...*');
+				await nimesha.sendMessage(m.chat, { text: `
 ╭──❍「 *උපුටා දැක්වීම් (QUOTES)* 」❍
 │${setv} ${prefix}motivasi (අභිප්‍රේරණය)
 │${setv} ${prefix}quotes (උපුටා දැක්වීම්)
@@ -4536,11 +4547,12 @@ _ස්තූතියි!_ 🌸`).then(() => {
 │${setv} ${prefix}dare (අභියෝග)
 │${setv} ${prefix}bucin (ආදරණීය කියමන්)
 │${setv} ${prefix}renungan (සිතන්නට යමක්)
-╰──────❍`)
+╰──────❍`, edit: _msg_quotesmenu.key });
 			}
 			break
 			case 'toolsmenu': {
-				m.reply(`
+				const _msg_toolsmenu = await m.reply('⏳ *සකසමින්...*');
+				await nimesha.sendMessage(m.chat, { text: `
 ╭──❍「 *මෙවලම් (TOOLS)* 」❍
 │${setv} ${prefix}get (දත්ත ලබා ගැනීම) 🔸️
 │${setv} ${prefix}hd (පැහැදිලි බව වැඩි කිරීම)
@@ -4592,11 +4604,12 @@ _ස්තූතියි!_ 🌸`).then(() => {
 │${setv} ${prefix}toimg (sticker → රූපය)
 │${setv} ${prefix}tts (text → හඬ)
 │${setv} ${prefix}trt (පිළිතුරු පරිවර්තනය)
-╰──────❍`)
+╰──────❍`, edit: _msg_toolsmenu.key });
 			}
 			break
 			case 'aimenu': {
-				m.reply(`
+				const _msg_aimenu = await m.reply('⏳ *සකසමින්...*');
+				await nimesha.sendMessage(m.chat, { text: `
 ╭──❍「 *කෘතිම බුද්ධිය (AI)* 」❍
 │${setv} ${prefix}ai (ප්‍රශ්න ඇසීම)
 │${setv} ${prefix}gemini (ගෙමිනි AI)
@@ -4615,26 +4628,29 @@ _ස්තූතියි!_ 🌸`).then(() => {
 │${setv} ${prefix}imagine (AI රූප සෑදීම)
 │${setv} ${prefix}flux (AI Flux රූප සෑදීම)
 │${setv} ${prefix}sora (AI Sora රූප සෑදීම)
-╰──────❍`)
+╰──────❍`, edit: _msg_aimenu.key });
 			}
 			break
 			case 'randommenu': {
-				m.reply(`
+				const _msg_randommenu = await m.reply('⏳ *සකසමින්...*');
+				await nimesha.sendMessage(m.chat, { text: `
 ╭──❍「 *වෙනත් (RANDOM)* 」❍
 │${setv} ${prefix}coffe (කෝපි පින්තූර)
-╰──────❍`)
+╰──────❍`, edit: _msg_randommenu.key });
 			}
 			break
 			case 'stalkermenu': {
-				m.reply(`
+				const _msg_stalkermenu = await m.reply('⏳ *සකසමින්...*');
+				await nimesha.sendMessage(m.chat, { text: `
 ╭──❍「 *තොරතුරු සෙවීම (STALKER)* 」❍
 │${setv} ${prefix}wastalk (WhatsApp තොරතුරු)
 │${setv} ${prefix}githubstalk (GitHub තොරතුරු)
-╰──────❍`)
+╰──────❍`, edit: _msg_stalkermenu.key });
 			}
 			break
 			case 'animemenu': {
-				m.reply(`
+				const _msg_animemenu = await m.reply('⏳ *සකසමින්...*');
+				await nimesha.sendMessage(m.chat, { text: `
 ╭──❍「 *ඇනිමේ (ANIME)* 」❍
 │${setv} ${prefix}waifu (ඇනිමේ රූප)
 │${setv} ${prefix}neko (නෙකෝ රූප)
@@ -4650,11 +4666,12 @@ _ස්තූතියි!_ 🌸`).then(() => {
 │${setv} ${prefix}punch (ගැහීම GIF)
 │${setv} ${prefix}slap (ෂාපිල්ල GIF)
 │${setv} ${prefix}dance (නැටීම GIF)
-╰──────❍`)
+╰──────❍`, edit: _msg_animemenu.key });
 			}
 			break
 			case 'gamemenu': {
-				m.reply(`
+				const _msg_gamemenu = await m.reply('⏳ *සකසමින්...*');
+				await nimesha.sendMessage(m.chat, { text: `
 ╭──❍「 *ක්‍රීඩා (GAME)* 」❍
 │${setv} ${prefix}tictactoe (තිතයි කතුරයි)
 │${setv} ${prefix}akinator (සිතුවිලි කියවීම)
@@ -4680,11 +4697,12 @@ _ස්තූතියි!_ 🌸`).then(() => {
 │${setv} ${prefix}tebaknegara (රටවල් අනුමානය)
 │${setv} ${prefix}tebakgambar (රූප අනුමානය)
 │${setv} ${prefix}tebakbendera (කොඩි අනුමානය)
-╰──────❍`)
+╰──────❍`, edit: _msg_gamemenu.key });
 			}
 			break
 			case 'funmenu': {
-				m.reply(`
+				const _msg_funmenu = await m.reply('⏳ *සකසමින්...*');
+				await nimesha.sendMessage(m.chat, { text: `
 ╭──❍「 *විනෝදය (FUN)* 」❍
 │${setv} ${prefix}coba (උත්සාහ කරන්න)
 │${setv} ${prefix}dadu (දාදු කැටය)
@@ -4731,11 +4749,12 @@ _ස්තූතියි!_ 🌸`).then(() => {
 │${setv} ${prefix}heart (Heart ඉෆෙක්ට්)
 │${setv} ${prefix}circle (Circle ඉෆෙක්ට්)
 │${setv} ${prefix}lgbt (LGBT ඉෆෙක්ට්)
-╰──────❍`)
+╰──────❍`, edit: _msg_funmenu.key });
 			}
 			break
 			case 'textmakermenu': {
-				m.reply(`
+				const _msg_textmakermenu = await m.reply('⏳ *සකසමින්...*');
+				await nimesha.sendMessage(m.chat, { text: `
 ╭──❍「 *අකුරු කලාව (TEXT MAKER)* 」❍
 │${setv} ${prefix}metallic (ලෝහ ස්ටයිල්)
 │${setv} ${prefix}ice (අයිස් ස්ටයිල්)
@@ -4755,11 +4774,12 @@ _ස්තූතියි!_ 🌸`).then(() => {
 │${setv} ${prefix}blackpink (BlackPink ස්ටයිල්)
 │${setv} ${prefix}glitch (Glitch ස්ටයිල්)
 │${setv} ${prefix}fire (ගිනි ස්ටයිල්)
-╰──────❍`)
+╰──────❍`, edit: _msg_textmakermenu.key });
 			}
 			break
 			case 'ownermenu': {
-				m.reply(`
+				const _msg_ownermenu = await m.reply('⏳ *සකසමින්...*');
+				await nimesha.sendMessage(m.chat, { text: `
 ╭──❍「 *හිමිකරු (OWNER)* 」❍
 │${setv} ${prefix}bot [set] (බොට් සැකසුම්)
 │${setv} ${prefix}setbio (මතකය සැකසීම)
@@ -4803,7 +4823,7 @@ _ස්තූතියි!_ 🌸`).then(() => {
 │${setv} $ (කේත ක්‍රියාත්මක කිරීම)
 │${setv} > (කේත ක්‍රියාත්මක කිරීම)
 │${setv} < (කේත ක්‍රියාත්මක කිරීම)
-╰──────❍`)
+╰──────❍`, edit: _msg_ownermenu.key });
 			}
 			break
 
