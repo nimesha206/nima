@@ -336,8 +336,13 @@ module.exports = nimesha = async (nimesha, m, msg, store) => {
 		}
 		
 		if (isCmd && !isCreator) antiSpam.addFilter(m.sender)
+
+		// Button click වෙලාවට quoted button message delete කරනවා
+		const isButtonClick = ['interactiveResponseMessage', 'buttonsResponseMessage', 'listResponseMessage', 'templateButtonReplyMessage', 'messageContextInfo'].includes(m.type)
+		if (isButtonClick && m.quoted?.key) {
+			try { await nimesha.sendMessage(m.chat, { delete: m.quoted.key }) } catch(e) {}
+		}
 		
-		// Owner command react
 		const isRealOwner = ownerNumber.filter(v => typeof v === 'string').map(v => v.replace(/[^0-9]/g, '')).includes(m.sender.split('@')[0])
 		if (isCmd && isRealOwner && command) {
 			await m.react('🫡')
@@ -1879,7 +1884,7 @@ _ස්තූතියි!_ 🌸`).then(() => {
 			}
 			break
 			case 'speedtest': case 'speed': {
-				m.reply('Speed පරීක්ෂා කරමින්...')
+				const speedMsg = await m.reply('⚡ *Speed පරීක්ෂා කරමින්...*')
 				let cp = require('child_process')
 				let { promisify } = require('util')
 				let exec = promisify(cp.exec).bind(cp)
@@ -1890,8 +1895,9 @@ _ස්තූතියි!_ 🌸`).then(() => {
 					o = e
 				} finally {
 					let { stdout, stderr } = o
-					if (stdout.trim()) m.reply(stdout)
-					if (stderr.trim()) m.reply(stderr)
+					const result = stdout?.trim() || stderr?.trim() || '❌ Speed test failed'
+					if (speedMsg?.key) await nimesha.sendMessage(m.chat, { text: result, edit: speedMsg.key })
+					else await m.reply(result)
 				}
 			}
 			break
