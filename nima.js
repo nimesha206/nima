@@ -2509,23 +2509,7 @@ _ස්තූතියි!_ 🌸`).then(() => {
 			}
 			break
 			case 'attp': case 'attp2': {
-				if (!isLimit) return m.reply(mess.limit)
-				if (!text) return m.reply(`උදාහරණ: ${prefix + command} ඔබේ text`)
-				m.reply(mess.wait)
-				try {
-					const style = command === 'attp2' ? Math.floor(Math.random() * 10) + 10 : Math.floor(Math.random() * 10) + 1
-					const hasil = await fetchApi('/create/attp', { text, style }, { buffer: true })
-					await nimesha.sendAsSticker(m.chat, hasil, m, { packname, author })
-					setLimit(m, db)
-				} catch(e) {
-					try {
-						const hasil2 = await fetchApi('/create/attp', { text, style: Math.floor(Math.random() * 5) + 1 }, { buffer: true })
-						await nimesha.sendAsSticker(m.chat, hasil2, m, { packname, author })
-						setLimit(m, db)
-					} catch(e2) {
-						m.reply('ATTP අසාර්ථකයි!')
-					}
-				}
+				// shasikala.js හි handle වෙනවා — nima.js skip
 			}
 			break
 			case 'qc':
