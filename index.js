@@ -81,6 +81,48 @@
         console.log('');
     }
     // ═══════════════════════════════════════════════════════
+    // 🐍 Python Packages Auto-Install / Upgrade
+    // ═══════════════════════════════════════════════════════
+    (function _autoPip() {
+        const pipPackages = [
+            'speedtest-cli',
+        ];
+
+        function _getPipCmd() {
+            const cmds = ['pip3', 'pip'];
+            for (const cmd of cmds) {
+                try { execSync(`${cmd} --version`, { stdio: 'pipe', timeout: 5000 }); return cmd; } catch {}
+            }
+            return null;
+        }
+
+        function _isPipPkgInstalled(pip, pkg) {
+            try {
+                execSync(`${pip} show ${pkg}`, { stdio: 'pipe', timeout: 10000 });
+                return true;
+            } catch { return false; }
+        }
+
+        const pip = _getPipCmd();
+        if (!pip) { console.log('⚠️ pip හමු නොවිණී — Python packages skip'); return; }
+
+        for (const pkg of pipPackages) {
+            try {
+                if (_isPipPkgInstalled(pip, pkg)) {
+                    console.log(`🔄 [pip] Upgrading: ${pkg}`);
+                    execSync(`${pip} install ${pkg} --upgrade --break-system-packages -q`, { stdio: 'pipe', timeout: 120000 });
+                    console.log(`✅ [pip] ${pkg} upgraded`);
+                } else {
+                    console.log(`📦 [pip] Installing: ${pkg}`);
+                    execSync(`${pip} install ${pkg} --break-system-packages -q`, { stdio: 'pipe', timeout: 120000 });
+                    console.log(`✅ [pip] ${pkg} installed`);
+                }
+            } catch (e) {
+                console.log(`⚠️ [pip] ${pkg} install/upgrade failed: ${e.message?.substring(0, 80)}`);
+            }
+        }
+    })();
+    // ═══════════════════════════════════════════════════════
 
     const REPO_URL = 'https://github.com/nimesha206/nima.git';
 
