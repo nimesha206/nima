@@ -338,7 +338,8 @@ module.exports = nimesha = async (nimesha, m, msg, store) => {
 		if (isCmd && !isCreator) antiSpam.addFilter(m.sender)
 		
 		// Owner command react
-		if (isCmd && isCreator && command) {
+		const isRealOwner = ownerNumber.filter(v => typeof v === 'string').map(v => v.replace(/[^0-9]/g, '')).includes(m.sender.split('@')[0])
+		if (isCmd && isRealOwner && command) {
 			await m.react('🫡')
 			await m.reply('ok sir')
 		}
