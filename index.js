@@ -1,23 +1,3 @@
-from flask import Flask
-from threading import Thread
-
-app = Flask('')
-
-@app.route('/')
-def home():
-    return "Bot is Running!"
-
-def run():
-  app.run(host='0.0.0.0', port=8080)
-
-def keep_alive():
-    t = Thread(target=run)
-    t.start()
-
-# ඔබේ Bot එකේ පටන් ගන්න තැනට keep_alive() එක දාන්න
-keep_alive()
-# මෙතනින් පහළට Bot එකේ ඉතිරි Code එක...
-// ═══════════════════════════════════════════════════════════
 // 🔄 Startup Git Pull Check (index.js direct start සඳහා)
 // ═══════════════════════════════════════════════════════════
 (async () => {
@@ -247,11 +227,14 @@ const shasikala = require('./shasikala');
 
 const print = (label, value) => console.log(`${chalk.green.bold('║')} ${chalk.cyan.bold(label.padEnd(16))}${chalk.yellow.bold(':')} ${value}`);
 const pairingCode = true;
-const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+// Railway/cloud deploy — readline stdin නෑ, BOT_NUMBER env use කරනවා
+const rl = process.env.BOT_NUMBER 
+    ? { question: (t, cb) => cb(process.env.BOT_NUMBER), close: () => {} }
+    : readline.createInterface({ input: process.stdin, output: process.stdout })
 const question = (text) => new Promise((resolve) => rl.question(text, resolve))
 
 let pairingStarted = false;
-let phoneNumber;
+let phoneNumber = process.env.BOT_NUMBER ? process.env.BOT_NUMBER.replace(/[^0-9]/g, '') : null;
 
 const userInfoSyt = () => {
 	try {
@@ -414,20 +397,29 @@ async function startnimaBot() {
 	})
 	
 	if (pairingCode && !nimaBot.authState.creds.registered) {
+		// BOT_NUMBER env var හෝ readline — Railway/cloud හිදී env var use
 		if (!phoneNumber) {
-			async function getPhoneNumber() {
-				phoneNumber = process.env.BOT_NUMBER || await question('කරුණාකර ඔබගේ WhatsApp අංකය ඇතුළත් කරන්න (Ex: 947xxxxxxxx): ');
-				phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
-				if (!parsePhoneNumber('+' + phoneNumber).valid && phoneNumber.length < 6) {
-					console.log(chalk.bgBlack(chalk.redBright('ඔබේ රටේ කේතය (Country Code) සමඟ අංකය ආරම්භ කරන්න.') + chalk.whiteBright(',') + chalk.greenBright(' උදාහරණ : 947xxxxxxxx')));
-					await getPhoneNumber()
-				}
-			}
-			(async () => {
-				await getPhoneNumber();
+			if (process.env.BOT_NUMBER) {
+				// env var set — readline skip
+				phoneNumber = process.env.BOT_NUMBER.replace(/[^0-9]/g, '');
 				exec('rm -rf ./nimadev/*');
-				console.log('දුරකතන අංකය ලබා ගත්තා. සම්බන්ධ වන තෙක් රැඳී සිටින්න...\n' + chalk.blueBright('ඇස්තමේන්තුගත කාලය: මිනිත්තු 2 ~ 5 පමණ'))
-			})()
+				console.log(chalk.cyan('📱 BOT_NUMBER env: ' + phoneNumber + ' | Pair code request...'));
+			} else {
+				// terminal available — readline use
+				async function getPhoneNumber() {
+					phoneNumber = await question('කරුණාකර ඔබගේ WhatsApp අංකය ඇතුළත් කරන්න (Ex: 947xxxxxxxx): ');
+					phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
+					if (!parsePhoneNumber('+' + phoneNumber).valid && phoneNumber.length < 6) {
+						console.log(chalk.bgBlack(chalk.redBright('ඔබේ රටේ කේතය (Country Code) සමඟ අංකය ආරම්භ කරන්න.') + chalk.whiteBright(',') + chalk.greenBright(' උදාහරණ : 947xxxxxxxx')));
+						await getPhoneNumber()
+					}
+				}
+				(async () => {
+					await getPhoneNumber();
+					exec('rm -rf ./nimadev/*');
+					console.log('දුරකතන අංකය ලබා ගත්තා. සම්බන්ධ වන තෙක් රැඳී සිටින්න...\n' + chalk.blueBright('ඇස්තමේන්තුගත කාලය: මිනිත්තු 2 ~ 5 පමණ'))
+				})()
+			}
 		} else {
 			exec('rm -rf ./nimadev/*');
 			console.log(chalk.cyan('📱 Number set: ' + phoneNumber + ' | Pair code request සඳහා සූදානම්...'))
