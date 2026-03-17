@@ -8,7 +8,6 @@ settings.js.bak
 index.js.bak
 *.log
 *.pid
-nimadev/
 baileys_store.json
 database.json
 session.json
