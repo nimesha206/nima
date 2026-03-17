@@ -1,26 +1,27 @@
+=== package.json ===
 {
-  "name": "miss-shasikala",
+  "name": "nima-bot",
   "version": "2.0.0",
-  "description": "උසස් සිතුවම් Downloader Bot - YouTube, Spotify, SoundCloud",
+  "description": "Nima WhatsApp Bot - Pair Code Deploy (Music Downloader)",
   "main": "start.js",
   "type": "commonjs",
   "scripts": {
     "start": "node start.js",
-    "dev": "nodemon index.js",
+    "dev": "nodemon start.js",
     "debug": "DEBUG=* node start.js"
   },
   "keywords": [
     "whatsapp-bot",
+    "pair-code",
     "music-downloader",
-    "youtube",
-    "spotify",
-    "soundcloud"
+    "youtube"
   ],
   "author": "Nimesha Madhushan",
   "license": "MIT",
   "directories": {
     "lib": "lib",
-    "src": "src"
+    "src": "src",
+    "public": "public"
   },
   "engines": {
     "node": ">=20.0.0"
@@ -77,10 +78,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nimesha206/nimabw.git"
-  },
-  "bugs": {
-    "url": "https://github.com/nimesha206/nimabw/issues"
-  },
-  "homepage": "https://github.com/nimesha206/nimabw#readme"
+    "url": "git+https://github.com/nimesha206/nima.git"
+  }
 }

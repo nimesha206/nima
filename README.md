@@ -62,7 +62,7 @@ pkg install git nodejs-lts python ffmpeg imagemagick -y
 pip install yt-dlp
 
 # 4. Repository clone කරන්න (username/password නොඉල්ලයි)
-git clone https://github.com/nimesha206/nimabw.git
+git clone https://github.com/nimesha206/nima.git
 cd nimabw
 
 # 5. Node packages install කරන්න
@@ -112,7 +112,7 @@ sudo apt install git nodejs npm python3 python3-pip ffmpeg imagemagick -y
 pip3 install yt-dlp
 
 # 3. Repository clone කරන්න
-git clone https://github.com/nimesha206/nimabw.git
+git clone https://github.com/nimesha206/nima.git
 cd nimabw
 
 # 4. Node packages install කරන්න
@@ -127,7 +127,7 @@ npm start
 ### 🤖 ස්වයංක්‍රීය ස්ථාපනය (Auto Install)
 
 ```bash
-git clone https://github.com/nimesha206/nimabw.git
+git clone https://github.com/nimesha206/nima.git
 cd nimabw
 bash install.sh
 ```
