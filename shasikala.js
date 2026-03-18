@@ -623,7 +623,9 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
         const botFooter = global.db?.set?.[botNumber]?.botname
             ? `> 🌸 *${global.db.set[botNumber].botname}* [MINI BOT]✨`
             : global.mess?.footer || '> 🌸 *MISS SHASIKALA* [MINI BOT]✨ | 👑 _NIMESHA MADHUSHAN_';
-        const prefix = m.prefix || '.';
+        // m.prefix emoji නම් reject කරනවා — valid prefix list ඇතුළෙ ඇතිදැයි check
+        const _validPfxList = global.listprefix || ['.', '!', '+'];
+        const prefix = (_validPfxList.includes(m.prefix)) ? m.prefix : (_validPfxList[0] || '.');
 
         // ══════════════════════════════════════════════════════════════
         // 🛑 BOT OWN MESSAGES FILTER — edit/protocol messages skip
@@ -648,7 +650,13 @@ module.exports = shasikala = async (nimesha, m, msg, store) => {
         const GROUP_INVITE_LINK = 'https://chat.whatsapp.com/HLBP338VvUC0ms5NqCkSSO?mode=hq2tcla';
 
         // command එකක්ද check
-        const isCmd = (m.body || m.text || '').trim().startsWith(prefix);
+        // prefix list එකෙන් එකක් හෝ bot number/owner message නම් පමණක් command
+        const _bodyRaw = (m.body || m.text || '').trim();
+        const _validPrefixes = global.listprefix || ['.', '!', '+'];
+        const _hasValidPrefix = _validPrefixes.some(p => _bodyRaw.startsWith(p));
+        // buttons: pure numeric (1-9) or known button IDs — prefix නැතුව allow
+        const _isButtonResponse = /^[1-9]$/.test(_bodyRaw) || /^(menu|allmenu|alive|ping|speed|runtime)$/i.test(_bodyRaw);
+        const isCmd = _hasValidPrefix || _isButtonResponse;
 
         // sender check — owner number OR bot number = private chat commands allow
         const senderNum = (m.sender || '').split('@')[0].replace(/[^0-9]/g, '');
@@ -1077,6 +1085,55 @@ ${botFooter}`;
                     text: `👥 *Group Info*\n━━━━━━━━━━━━━━━━━━━━━━\n📌 *Name:* ${metadata.subject}\n🆔 *ID:* ${m.chat}\n👥 *Members:* ${metadata.participants.length}\n👮 *Admins:* ${admins.length}\n📝 *Description:*\n${metadata.desc || 'N/A'}\n📅 *Created:* ${new Date(metadata.creation * 1000).toLocaleDateString()}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}`
                 }, { quoted: m });
             } catch (e) { await sendAutoDelete(nimesha, m.chat, `❌ Group info ගැනීමට නොහැකිය`, botFooter, { quoted: m }); }
+        }
+
+        // .welcome on/off / .setwelcome / .setleave
+        else if (cmd === 'welcome') {
+            if (!m.isGroup) return await sendAutoDelete(nimesha, m.chat, `❌ Group command පමණයි!`, botFooter, { quoted: m });
+            if (!m.isAdmin) return await sendAutoDelete(nimesha, m.chat, `❌ Admin command පමණයි!`, botFooter, { quoted: m });
+            const sub = args[0]?.toLowerCase();
+            if (!sub || (sub !== 'on' && sub !== 'off')) {
+                return await sendAutoDelete(nimesha, m.chat, `📌 *Welcome Command*\n━━━━━━━━━━━━━━━━━━━━━━\n✅ Enable: ${prefix}welcome on\n❌ Disable: ${prefix}welcome off\n✏️ Custom: ${prefix}setwelcome [text]\n\n*දැනට:* ${global.db?.groups?.[m.chat]?.welcome ? '🟢 ON' : '🔴 OFF'}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}`, '', { quoted: m });
+            }
+            if (!global.db.groups) global.db.groups = {};
+            if (!global.db.groups[m.chat]) global.db.groups[m.chat] = {};
+            global.db.groups[m.chat].welcome = sub === 'on';
+            await sendAutoDelete(nimesha, m.chat, `🌸 *Welcome Message*\n━━━━━━━━━━━━━━━━━━━━━━\n${sub === 'on' ? '✅ Welcome message ක්‍රියාත්මක කෙරිණ!' : '❌ Welcome message අක්‍රිය කෙරිණ!'}\n━━━━━━━━━━━━━━━━━━━━━━`, botFooter, { quoted: m });
+        }
+
+        else if (cmd === 'setwelcome') {
+            if (!m.isGroup) return await sendAutoDelete(nimesha, m.chat, `❌ Group command පමණයි!`, botFooter, { quoted: m });
+            if (!m.isAdmin) return await sendAutoDelete(nimesha, m.chat, `❌ Admin command පමණයි!`, botFooter, { quoted: m });
+            if (!q) return await sendAutoDelete(nimesha, m.chat, `⚠️ Welcome text ඇතුළත් කරන්න!\nඋදා: ${prefix}setwelcome සාදරයෙන් @!`, botFooter, { quoted: m });
+            if (!global.db.groups) global.db.groups = {};
+            if (!global.db.groups[m.chat]) global.db.groups[m.chat] = {};
+            if (!global.db.groups[m.chat].text) global.db.groups[m.chat].text = {};
+            global.db.groups[m.chat].text.setwelcome = q;
+            await sendAutoDelete(nimesha, m.chat, `✅ *Custom Welcome Message සකසන ලදී!*\n━━━━━━━━━━━━━━━━━━━━━━\n📝 *Preview:*\n${q.replace('@', '@' + (m.sender.split('@')[0]))}\n━━━━━━━━━━━━━━━━━━━━━━\n_(@) = new member tag_`, botFooter, { quoted: m });
+        }
+
+        else if (cmd === 'goodbye') {
+            if (!m.isGroup) return await sendAutoDelete(nimesha, m.chat, `❌ Group command පමණයි!`, botFooter, { quoted: m });
+            if (!m.isAdmin) return await sendAutoDelete(nimesha, m.chat, `❌ Admin command පමණයි!`, botFooter, { quoted: m });
+            const sub = args[0]?.toLowerCase();
+            if (!sub || (sub !== 'on' && sub !== 'off')) {
+                return await sendAutoDelete(nimesha, m.chat, `📌 *Goodbye Command*\n━━━━━━━━━━━━━━━━━━━━━━\n✅ Enable: ${prefix}goodbye on\n❌ Disable: ${prefix}goodbye off\n✏️ Custom: ${prefix}setleave [text]\n\n*දැනට:* ${global.db?.groups?.[m.chat]?.leave ? '🟢 ON' : '🔴 OFF'}\n━━━━━━━━━━━━━━━━━━━━━━\n${botFooter}`, '', { quoted: m });
+            }
+            if (!global.db.groups) global.db.groups = {};
+            if (!global.db.groups[m.chat]) global.db.groups[m.chat] = {};
+            global.db.groups[m.chat].leave = sub === 'on';
+            await sendAutoDelete(nimesha, m.chat, `👋 *Goodbye Message*\n━━━━━━━━━━━━━━━━━━━━━━\n${sub === 'on' ? '✅ Goodbye message ක්‍රියාත්මක කෙරිණ!' : '❌ Goodbye message අක්‍රිය කෙරිණ!'}\n━━━━━━━━━━━━━━━━━━━━━━`, botFooter, { quoted: m });
+        }
+
+        else if (cmd === 'setleave') {
+            if (!m.isGroup) return await sendAutoDelete(nimesha, m.chat, `❌ Group command පමණයි!`, botFooter, { quoted: m });
+            if (!m.isAdmin) return await sendAutoDelete(nimesha, m.chat, `❌ Admin command පමණයි!`, botFooter, { quoted: m });
+            if (!q) return await sendAutoDelete(nimesha, m.chat, `⚠️ Leave text ඇතුළත් කරන්න!\nඋදා: ${prefix}setleave @ සමූහය හැරගිය`, botFooter, { quoted: m });
+            if (!global.db.groups) global.db.groups = {};
+            if (!global.db.groups[m.chat]) global.db.groups[m.chat] = {};
+            if (!global.db.groups[m.chat].text) global.db.groups[m.chat].text = {};
+            global.db.groups[m.chat].text.setleave = q;
+            await sendAutoDelete(nimesha, m.chat, `✅ *Custom Leave Message සකසන ලදී!*\n━━━━━━━━━━━━━━━━━━━━━━\n📝 *Preview:*\n${q.replace('@', '@' + (m.sender.split('@')[0]))}\n━━━━━━━━━━━━━━━━━━━━━━`, botFooter, { quoted: m });
         }
 
         // .staff / .admins
