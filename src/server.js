@@ -14,6 +14,157 @@ global.nimaInstance = null;
 const MENU_CARDS_DIR = path.join(__dirname, '../database/menucards');
 if (!fs.existsSync(MENU_CARDS_DIR)) fs.mkdirSync(MENU_CARDS_DIR, { recursive: true });
 
+// Background images for privacy card
+const PRIVACY_BG_URLS = [
+    'https://i.ibb.co/MDcvDZqT/z-R.jpg',
+    'https://i.ibb.co/pvMNX9Ts/Snapchat-2054937626.jpg',
+    'https://i.ibb.co/gZhQj7d4/Snapchat-1910645962.jpg',
+    'https://i.ibb.co/Hf8MLvkF/Snapchat-1096195994.jpg',
+    'https://i.ibb.co/ns0BNJ4r/IMG-20251007-WA0003.jpg',
+    'https://i.ibb.co/Wp0DZS2C/IMG-20250927-WA0005.jpg',
+    'https://i.ibb.co/m5vvvYn9/Picsart-25-09-25-07-37-17-773.png',
+    'https://i.ibb.co/hJFt21Lp/Picsart-25-09-24-21-21-09-429.png',
+    'https://i.ibb.co/dssxwTG1/e7d407a5f5ea7fdf3a8cb3784b808572.jpg',
+];
+
+async function generatePrivacyCard(botInfo = {}) {
+    try {
+        const sharp = require('sharp');
+        const axios = require('axios');
+        const moment = require('moment-timezone');
+        const now = moment.tz('Asia/Colombo');
+        const timeStr = now.format('HH:mm');
+        const dateStr = now.format('DD/MM/YYYY');
+
+        const botName   = botInfo.botName   || 'Miss Shasikala';
+        const ownerName = botInfo.ownerName || 'Nimesha Madhushan';
+        const prefix    = botInfo.prefix    || '.';
+
+        const SETTINGS = [
+            { num: '1-3',   label: 'Last Seen',        desc: 'Everyone / Contacts / Nobody' },
+            { num: '4-5',   label: 'Online Status',     desc: 'Everyone / Match Last Seen' },
+            { num: '6-8',   label: 'Profile Picture',   desc: 'Everyone / Contacts / Nobody' },
+            { num: '9-11',  label: 'Status Updates',    desc: 'Everyone / Contacts / Nobody' },
+            { num: '12-13', label: 'Read Receipts',     desc: 'Enable / Disable' },
+            { num: '14-16', label: 'Groups Add',        desc: 'Everyone / Contacts / Admins' },
+            { num: '17-20', label: 'Disappearing',      desc: 'Off / 24h / 7 Days / 90 Days' },
+            { num: '21',    label: 'Block List',        desc: 'View blocked numbers' },
+        ];
+
+        const W = 560;
+        const TITLE_H = 110;
+        const INFO_H  = 128;
+        const ROW_H   = 62;
+        const FOOT_H  = 58;
+        const H = TITLE_H + INFO_H + SETTINGS.length * ROW_H + FOOT_H;
+
+        // Use cached bg if available, else fetch directly, else dark fallback
+        let bgResized;
+        try {
+            const bgFiles = fs.readdirSync(MENU_CARDS_DIR).filter(f => f.startsWith('_bg'));
+            if (bgFiles.length > 0) {
+                const bgFile = bgFiles[Math.floor(Math.random() * bgFiles.length)];
+                const bgBuf = fs.readFileSync(path.join(MENU_CARDS_DIR, bgFile));
+                bgResized = await sharp(bgBuf).resize(W, H, { fit: 'cover', position: 'center' }).jpeg({ quality: 80 }).toBuffer();
+            } else {
+                const bgUrl = PRIVACY_BG_URLS[Math.floor(Math.random() * PRIVACY_BG_URLS.length)];
+                const r = await axios.get(bgUrl, { responseType: 'arraybuffer', timeout: 12000, headers: { 'User-Agent': 'Mozilla/5.0' } });
+                bgResized = await sharp(Buffer.from(r.data)).resize(W, H, { fit: 'cover', position: 'center' }).jpeg({ quality: 80 }).toBuffer();
+            }
+        } catch(e) {
+            bgResized = await sharp({ create: { width: W, height: H, channels: 3, background: { r: 18, g: 6, b: 2 } } }).jpeg().toBuffer();
+        }
+
+        function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+        let svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '">';
+        svg += '<rect width="' + W + '" height="' + H + '" fill="#000000" opacity="0.62"/>';
+        svg += '<rect x="0" y="0" width="' + W + '" height="6" fill="#ff6600"/>';
+        svg += '<rect x="0" y="6" width="' + W + '" height="2" fill="#ff6600" opacity="0.4"/>';
+
+        const b=16, bs=22;
+        [[b,b,1,1],[W-b,b,-1,1],[b,TITLE_H-b,1,-1],[W-b,TITLE_H-b,-1,-1]].forEach(function(p){
+            svg += '<line x1="'+p[0]+'" y1="'+p[1]+'" x2="'+(p[0]+p[2]*bs)+'" y2="'+p[1]+'" stroke="#ff6600" stroke-width="3"/>';
+            svg += '<line x1="'+p[0]+'" y1="'+p[1]+'" x2="'+p[0]+'" y2="'+(p[1]+p[3]*bs)+'" stroke="#ff6600" stroke-width="3"/>';
+        });
+
+        svg += '<text x="'+(W/2)+'" y="48" text-anchor="middle" font-family="Courier New,monospace" font-size="30" font-weight="700" fill="#ff6600" letter-spacing="4">[ PRIVACY ]</text>';
+        svg += '<text x="'+(W/2)+'" y="72" text-anchor="middle" font-family="Courier New,monospace" font-size="14" fill="#ffaa66" letter-spacing="3">PRIVACY MANAGER</text>';
+        svg += '<text x="'+(W/2)+'" y="94" text-anchor="middle" font-family="Courier New,monospace" font-size="11" fill="#cc6600" letter-spacing="1">Type: '+esc(prefix)+'privacy [number]</text>';
+        svg += '<line x1="20" y1="'+TITLE_H+'" x2="'+(W-20)+'" y2="'+TITLE_H+'" stroke="#ff6600" stroke-width="1.5"/>';
+
+        const infoY = TITLE_H + 10;
+        svg += '<text x="24" y="'+(infoY+14)+'" font-family="Courier New,monospace" font-size="10" fill="#886644" letter-spacing="2">BOT NAME</text>';
+        svg += '<text x="24" y="'+(infoY+30)+'" font-family="Courier New,monospace" font-size="15" font-weight="700" fill="#ffcc99">'+esc(botName)+'</text>';
+        svg += '<text x="'+(W/2+8)+'" y="'+(infoY+14)+'" font-family="Courier New,monospace" font-size="10" fill="#886644" letter-spacing="2">OWNER</text>';
+        svg += '<text x="'+(W/2+8)+'" y="'+(infoY+30)+'" font-family="Courier New,monospace" font-size="15" font-weight="700" fill="#ffcc99">'+esc(ownerName)+'</text>';
+        svg += '<text x="24" y="'+(infoY+52)+'" font-family="Courier New,monospace" font-size="10" fill="#886644" letter-spacing="2">DATE</text>';
+        svg += '<text x="24" y="'+(infoY+68)+'" font-family="Courier New,monospace" font-size="14" fill="#ffcc99">'+esc(dateStr)+'</text>';
+        svg += '<text x="'+(W/2+8)+'" y="'+(infoY+52)+'" font-family="Courier New,monospace" font-size="10" fill="#886644" letter-spacing="2">TIME</text>';
+        svg += '<text x="'+(W/2+8)+'" y="'+(infoY+68)+'" font-family="Courier New,monospace" font-size="14" fill="#ffcc99">'+esc(timeStr)+'</text>';
+        svg += '<text x="24" y="'+(infoY+90)+'" font-family="Courier New,monospace" font-size="10" fill="#886644" letter-spacing="2">PREFIX</text>';
+        svg += '<text x="24" y="'+(infoY+108)+'" font-family="Courier New,monospace" font-size="20" font-weight="700" fill="#ff6600">'+esc(prefix)+'</text>';
+
+        const listY = TITLE_H + INFO_H;
+        svg += '<line x1="0" y1="'+listY+'" x2="'+W+'" y2="'+listY+'" stroke="#ff6600" stroke-width="1.5"/>';
+
+        SETTINGS.forEach(function(s, i) {
+            const rowY = listY + i * ROW_H;
+            svg += '<rect x="0" y="'+rowY+'" width="'+W+'" height="'+ROW_H+'" fill="'+(i%2===0?'#ffffff08':'#ff660008')+'"/>';
+            svg += '<rect x="14" y="'+(rowY+14)+'" width="52" height="28" rx="6" fill="#ff6600" opacity="0.88"/>';
+            svg += '<text x="40" y="'+(rowY+33)+'" text-anchor="middle" font-family="Courier New,monospace" font-size="12" font-weight="700" fill="#ffffff">'+esc(s.num)+'</text>';
+            svg += '<text x="80" y="'+(rowY+28)+'" font-family="Courier New,monospace" font-size="17" font-weight="700" fill="#ffffff">'+esc(s.label)+'</text>';
+            svg += '<text x="80" y="'+(rowY+48)+'" font-family="Courier New,monospace" font-size="12" fill="#ffaa66">'+esc(s.desc)+'</text>';
+            svg += '<text x="'+(W-26)+'" y="'+(rowY+34)+'" font-family="Courier New,monospace" font-size="18" fill="#ff6600" opacity="0.7">&gt;</text>';
+            if (i < SETTINGS.length-1)
+                svg += '<line x1="14" y1="'+(rowY+ROW_H)+'" x2="'+(W-14)+'" y2="'+(rowY+ROW_H)+'" stroke="#ffffff14" stroke-width="1"/>';
+        });
+
+        const footY = listY + SETTINGS.length * ROW_H;
+        svg += '<rect x="0" y="'+footY+'" width="'+W+'" height="'+FOOT_H+'" fill="#000000" opacity="0.72"/>';
+        svg += '<line x1="0" y1="'+footY+'" x2="'+W+'" y2="'+footY+'" stroke="#ff6600" stroke-width="2.5"/>';
+        svg += '<text x="'+(W/2)+'" y="'+(footY+22)+'" text-anchor="middle" font-family="Courier New,monospace" font-size="13" fill="#cc6600">Miss Shasikala Bot  |  Nimesha Madhushan</text>';
+        svg += '<text x="'+(W/2)+'" y="'+(footY+42)+'" text-anchor="middle" font-family="Courier New,monospace" font-size="11" fill="#ff6600" letter-spacing="2">[ TAP TO OPEN PRIVACY SETTINGS ]</text>';
+        svg += '<rect x="0" y="'+(footY+FOOT_H-4)+'" width="'+W+'" height="4" fill="#ff6600"/>';
+        svg += '</svg>';
+
+        const final = await sharp(bgResized)
+            .composite([{ input: Buffer.from(svg), blend: 'over' }])
+            .jpeg({ quality: 94 })
+            .toBuffer();
+
+        return final;
+    } catch(e) {
+        console.log('Privacy card error:', e.message);
+        return null;
+    }
+}
+
+global.generatePrivacyCard = generatePrivacyCard;
+
+// Pre-download background images after 30s (bot fully started)
+setTimeout(async () => {
+    try {
+        const axios = require('axios');
+        let count = 0;
+        for (let i = 0; i < PRIVACY_BG_URLS.length; i++) {
+            const dest = path.join(MENU_CARDS_DIR, '_bg' + i + '.jpg');
+            if (fs.existsSync(dest)) { count++; continue; }
+            try {
+                const r = await axios.get(PRIVACY_BG_URLS[i], { responseType: 'arraybuffer', timeout: 15000, headers: { 'User-Agent': 'Mozilla/5.0' } });
+                const sharp = require('sharp');
+                const buf = await sharp(Buffer.from(r.data)).jpeg({ quality: 85 }).toBuffer();
+                fs.writeFileSync(dest, buf);
+                count++;
+                console.log('BG cached:', i);
+            } catch(e) { console.log('BG skip:', i); }
+        }
+        console.log('BG cache done:', count + '/' + PRIVACY_BG_URLS.length);
+        // Regenerate menu cards with bg images
+        if (count > 0 && global.generateMenuCards) await global.generateMenuCards().catch(() => {});
+    } catch(e) {}
+}, 30000);
+
 async function generateMenuCards(botInfo = {}) {
     try {
         const sharp = require('sharp');
@@ -37,6 +188,7 @@ async function generateMenuCards(botInfo = {}) {
             { id:'fun',      title:'විනෝදය (FUN)',           siTitle:'😂 විනෝදාත්මක',         color:'#cc0066', cmds:['.joke','.quote','.fact','.8ball','.compliment','.insult','.hack','.ship','.flirt','.shayari'] },
             { id:'games',    title:'ක්‍රීඩා (GAMES)',         siTitle:'🎮 ක්‍රීඩා විධාන',      color:'#006699', cmds:['.tictactoe','.suit','.chess','.akinator','.slot','.math','.blackjack'] },
             { id:'search',   title:'සෙවුම (SEARCH)',         siTitle:'🔍 සෙවුම් විධාන',       color:'#449900', cmds:['.google','.ytsearch','.define','.weather','.news','.lyrics','.fact'] },
+            { id:'privacy',  title:'PRIVACY',                siTitle:'🔐 Privacy Manager',     color:'#ff6600', cmds:['.privacy 1-3','.privacy 4-5','.privacy 6-8','.privacy 9-11','.privacy 12-13','.privacy 14-16','.privacy 17-20','.privacy 21'] },
         ];
 
         function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -118,7 +270,21 @@ async function generateMenuCards(botInfo = {}) {
             svg += '<rect x="0" y="' + (footY+FOOT_H-3) + '" width="' + W + '" height="3" fill="' + cat.color + '"/>';
             svg += '</svg>';
 
-            const buf = await sharp(Buffer.from(svg)).jpeg({quality: 93}).toBuffer();
+            // Use cached bg if available, else plain
+            let buf;
+            try {
+                const bgFiles = fs.readdirSync(MENU_CARDS_DIR).filter(f => f.startsWith('_bg'));
+                if (bgFiles.length > 0) {
+                    const bgFile = bgFiles[Math.floor(Math.random() * bgFiles.length)];
+                    const bgBuf = fs.readFileSync(path.join(MENU_CARDS_DIR, bgFile));
+                    const bgResized = await sharp(bgBuf).resize(W, H, { fit: 'cover', position: 'center' }).jpeg({ quality: 75 }).toBuffer();
+                    buf = await sharp(bgResized).composite([{ input: Buffer.from(svg), blend: 'over' }]).jpeg({ quality: 93 }).toBuffer();
+                } else {
+                    buf = await sharp(Buffer.from(svg)).jpeg({quality: 93}).toBuffer();
+                }
+            } catch(e) {
+                buf = await sharp(Buffer.from(svg)).jpeg({quality: 93}).toBuffer();
+            }
             fs.writeFileSync(path.join(MENU_CARDS_DIR, cat.id + '.jpg'), buf);
         }
         console.log('✅ Menu card images generated!');
@@ -128,6 +294,27 @@ async function generateMenuCards(botInfo = {}) {
 }
 global.generateMenuCards = generateMenuCards;
 generateMenuCards();
+
+// Serve privacy card — regenerated each request with random bg
+app.get('/privacycard', async (req, res) => {
+    try {
+        if (global.generatePrivacyCard) {
+            const botInfo = global.db?.set ? Object.values(global.db.set)[0] : {};
+            const buf = await global.generatePrivacyCard({
+                botName:   botInfo?.botname   || 'Miss Shasikala',
+                ownerName: global.author      || 'Nimesha Madhushan',
+                botNumber: global.owner?.[0]?.replace(/[^0-9]/g,'') || '94726800969',
+                ownerNum:  global.owner?.[0]?.replace(/[^0-9]/g,'') || '94726800969',
+                prefix:    botInfo?.prefix    || '.',
+            });
+            if (buf) {
+                res.setHeader('Content-Type', 'image/jpeg');
+                return res.send(buf);
+            }
+        }
+        res.status(500).send('Error');
+    } catch(e) { res.status(500).send(e.message); }
+});
 
 // Serve menu card images
 app.get('/menucard/:id', (req, res) => {
@@ -752,8 +939,12 @@ async function generateMenuCards(botInfo = {}) {
             '#00aaff', // sky blue
             '#ff44aa', // hot pink
             '#44ff88', // mint
+            '#ff3366', // crimson
+            '#33ffcc', // aqua
+            '#ffcc00', // gold
+            '#aa44ff', // violet
         ];
-        // Fisher-Yates shuffle
+        // Fisher-Yates shuffle — enough for 9 cards
         const shuffled = [...PALETTE].sort(() => Math.random() - 0.5);
 
         const CATS = [
@@ -765,6 +956,7 @@ async function generateMenuCards(botInfo = {}) {
             { id:'fun',      title:'FUN',       sub:'Fun & Entertainment',     color: shuffled[5], cmds:['.joke','.quote','.fact','.8ball','.compliment','.insult','.hack','.ship','.flirt','.shayari'] },
             { id:'games',    title:'GAMES',     sub:'Games Commands',          color: shuffled[6], cmds:['.tictactoe','.suit','.chess','.akinator','.slot','.math','.blackjack'] },
             { id:'search',   title:'SEARCH',    sub:'Search Commands',         color: shuffled[7], cmds:['.google','.ytsearch','.define','.weather','.news','.lyrics','.fact'] },
+            { id:'privacy',  title:'PRIVACY',   sub:'Privacy Manager',          color: shuffled[8], cmds:['.privacy 1-3','.privacy 4-5','.privacy 6-8','.privacy 9-11','.privacy 12-13','.privacy 14-16','.privacy 17-20','.privacy 21'] },
         ];
 
         function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
